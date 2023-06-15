@@ -6,6 +6,10 @@ import argparse
 import numpy as np
 from random import randrange
 
+import sys
+sys.path.append('scripts')
+import readhdf5
+
 ### DEFAULTS ###
 MATERIALS_PATH = 'resources/materials'
 MESH_PATH = 'resources/test/'
@@ -61,9 +65,11 @@ def testDataGenerator(materialPath, meshPath, numPerspectives, numLights, numObj
     # activate depth rendering
     bproc.renderer.enable_depth_output(activate_antialiasing=True, output_dir='output', file_prefix='depth_', convert_to_distance=False)
     bproc.renderer.set_light_bounces(max_bounces=200, diffuse_bounces=200, glossy_bounces=200, transmission_bounces=200, transparent_max_bounces=200)
-    #render whole pipeline
+    # render whole pipeline
     data = bproc.renderer.render()
-    
+    # normalize depth
+    depth = data['depth']
+    data['depth'] = readhdf5.normalize(depth, 0, 20) # todo change hardcoded scala-values
     # write data to .hdf5 container
     bproc.writer.write_hdf5("output/", data)
 
