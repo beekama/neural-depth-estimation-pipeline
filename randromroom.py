@@ -4,11 +4,13 @@
 import blenderproc as bproc
 import argparse
 import numpy as np
+from PIL import Image
 from random import randrange
 
+# import helper-scripts
 import sys
 sys.path.append('scripts')
-import readhdf5
+import readhdf5, create_striped_img
 
 ### DEFAULTS ###
 MATERIALS_PATH = 'resources/materials'
@@ -40,13 +42,14 @@ def testDataGenerator(materialPath, meshPath, numPerspectives, numLights, numObj
     
     # light sources
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
-    
+
+
     # init bvh tree containing all mesh objects
     bvh_tree = bproc.object.create_bvh_tree_multi_objects(objects)
     floor = [obj for obj in objects if obj.get_name() == "Floor"][0]
     poses = 0
     tries = 0
-    while tries < 10000 and poses < 5:
+    while tries < 10000 and poses < 1:
         # sample point
         location = bproc.sampler.upper_region(floor, min_height=1.5, max_height=1.8)
         # sample rotation
@@ -61,17 +64,33 @@ def testDataGenerator(materialPath, meshPath, numPerspectives, numLights, numObj
             bproc.camera.add_camera_pose(cam2world_matrix)
             poses += 1
         tries += 1
+
+            
+    # define new light source as projector
+    #pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, 2560)
+    pattern_img = create_striped_img.create_img(5)
+    proj = bproc.types.Light()
+    proj.set_type('SPOT')
+    proj.set_energy(3000)
+    proj.setup_as_projector(pattern_img)
     
     # activate depth rendering
-    bproc.renderer.enable_depth_output(activate_antialiasing=True, output_dir='output', file_prefix='depth_', convert_to_distance=False)
-    bproc.renderer.set_light_bounces(max_bounces=200, diffuse_bounces=200, glossy_bounces=200, transmission_bounces=200, transparent_max_bounces=200)
+    bproc.renderer.enable_depth_output(activate_antialiasing=False, output_dir='output', file_prefix='depth_', convert_to_distance=False)
+    #bproc.renderer.set_light_bounces(max_bounces=200, diffuse_bounces=200, glossy_bounces=200, transmission_bounces=200, transparent_max_bounces=200)
+    #m bproc.material.add_alpha_channel_to_textures(blurry_edges=True)
+    #bproc.renderer.toggle_stereo(True)
+    
     # render whole pipeline
     data = bproc.renderer.render()
+    # Apply stereo matching to each pair of images
+    data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
+
     # normalize depth
     depth = data['depth']
     data['depth'] = readhdf5.normalize(depth, 0, 20) # todo change hardcoded scala-values
     # write data to .hdf5 container
     bproc.writer.write_hdf5("output/", data)
+
 
 ### MAIN-METHOD ###
 if __name__ == "__main__":
