@@ -22,7 +22,7 @@ NUM_OF_LIGHTSOURCES = 1
 
 
 
-def testDataGenerator(materialPath, meshPath, numPerspectives, numLights, numObjects):
+def testDataGenerator(args):
     
     # enable cycles renderer and sets some speedup options for rendering
     bproc.init()
@@ -32,16 +32,17 @@ def testDataGenerator(materialPath, meshPath, numPerspectives, numLights, numObj
     
     
     # load materias and objects
-    materials = bproc.loader.load_ccmaterials(materialPath, ["Bricks", "Wood", "Carpet", "Tile", "Marble"])
+    materials = bproc.loader.load_ccmaterials(args.material_path, ["Bricks", "Wood", "Carpet", "Tile", "Marble"])
     interior_objects = []
-    for i in range (numObjects):
-        interior_objects.extend(bproc.loader.load_blend(meshPath +  RESOURCES[randrange(len(RESOURCES))]))
+    for i in range (args.num_meshes):
+        interior_objects.extend(bproc.loader.load_blend(args.mesh_path +  RESOURCES[randrange(len(RESOURCES))]))
     
     # construct random room
     objects = bproc.constructor.construct_random_room(used_floor_area=25, interior_objects=interior_objects,materials=materials, amount_of_extrusions=5)
     
     # light sources
-    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
+    if not args.infrared:
+        bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
 
 
     # init bvh tree containing all mesh objects
@@ -67,12 +68,15 @@ def testDataGenerator(materialPath, meshPath, numPerspectives, numLights, numObj
 
             
     # define new light source as projector
-    #pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, 2560)
-    pattern_img = create_striped_img.create_img(5)
-    proj = bproc.types.Light()
-    proj.set_type('SPOT')
-    proj.set_energy(3000)
-    proj.setup_as_projector(pattern_img)
+    if args.projection:
+        if args.proj_pattern == "stripes":
+            pattern_img = create_striped_img.create_img(args.num_pattern)
+        else:
+            pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
+        proj = bproc.types.Light()
+        proj.set_type('SPOT')
+        proj.set_energy(3000)
+        proj.setup_as_projector(pattern_img)
     
     # activate depth rendering
     bproc.renderer.enable_depth_output(activate_antialiasing=False, output_dir='output', file_prefix='depth_', convert_to_distance=False)
@@ -103,7 +107,24 @@ if __name__ == "__main__":
     parser.add_argument('--num_perspectives', '-cam', help='Number of different perspectives', default=NUM_OF_PERSPECTIVES)
     parser.add_argument('--num_lightsources', '-light', help='Number of lightsources used in image', default=NUM_OF_LIGHTSOURCES)
 
+    # projection
+    parser.add_argument('--projection', '-proj', action='store_true', help='Enable projection mode')
+    parser.add_argument('--proj_pattern', '-pat', choices=['points', 'stripes'], default='stripes', help='Define projection pattern')
+    parser.add_argument('--num_pattern', '-npat', type=int, help='Number of points or stripes')
+    parser.add_argument('--infrared', action='store_true', help='Turn off all additional lightsources')
 
     args = parser.parse_args()
 
-    testDataGenerator(args.material_path, args.mesh_path, args.num_perspectives, args.num_lightsources, args.num_meshes)
+    # check projection dependencies
+    if not args.projection and (args.proj_pattern or args.infrared):
+        parser.error("Invalid argument: 'proj_pattern', 'infrared' only allowed if 'proj' is set")
+
+    # Handle the default value for '--num_pattern' based on the value of '--proj_pattern'
+    if args.num_pattern is None:
+        if args.proj_pattern == 'stripes':
+            args.num_pattern = 5
+        elif args.proj_pattern == 'points':
+            args.num_pattern = 2560
+
+
+    testDataGenerator(args)
