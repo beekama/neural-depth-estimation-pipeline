@@ -49,23 +49,31 @@ def testDataGenerator(args):
     bvh_tree = bproc.object.create_bvh_tree_multi_objects(objects)
     floor = [obj for obj in objects if obj.get_name() == "Floor"][0]
     poses = 0
-    tries = 0
-    while tries < 10000 and poses < 1:
-        # sample point
-        location = bproc.sampler.upper_region(floor, min_height=1.5, max_height=1.8)
-        # sample rotation
-        rotation = np.random.uniform([1.0, 0, 0], [1.4217, 0, 6.283185307])
-        cam2world_matrix = bproc.math.build_transformation_mat(location, rotation)
-    
-        # check that obstacles are at least 1 meter away from camera and make sure the view is interesting enough
-        if bproc.camera.perform_obstacle_in_view_check(cam2world_matrix, {"min":1.2}, bvh_tree) and \
-                bproc.camera.scene_coverage_score(cam2world_matrix) > 0.4 and \
-                floor.position_is_above_object(location):
-            # persist camera pose
-            bproc.camera.add_camera_pose(cam2world_matrix)
-            poses += 1
-        tries += 1
+    # Get point-of-interest, the camera should look towards and determine starting point
+    poi = bproc.object.compute_poi(objects)
+    start_location = bproc.sampler.upper_region(floor, min_height=1.5, max_height=1.8)
+    spline_vector = poi-start_location
+    step_size = spline_vector/5
+    current_loc = start_location
 
+    while poses < 5:
+        # Sample random camera location above objects
+        rand = np.random.uniform([-0.1, -0.3, 0], [0.1, 0.3, 0.05])
+        location = current_loc + rand
+        current_loc += step_size
+
+        # Compute rotation based on vector going from location towards poi
+        rotation_matrix = bproc.camera.rotation_from_forward_vec(poi-location, inplane_rot=np.random.uniform(-0.7854, 0.7854))
+        # Add homog cam pose based on location an rotation
+        cam2world_matrix = bproc.math.build_transformation_mat(location, rotation_matrix)
+        
+        # check that obstacles are at least 1 meter away from camera and make sure the view is interesting enough
+        #if bproc.camera.perform_obstacle_in_view_check(cam2world_matrix, {"min":1.2}, bvh_tree) and \
+        #        bproc.camera.scene_coverage_score(cam2world_matrix) > 0.4 and \
+        #        floor.position_is_above_object(location):
+        #    # persist camera pose
+        bproc.camera.add_camera_pose(cam2world_matrix)
+        poses += 1
             
     # define new light source as projector
     if args.projection:
@@ -116,8 +124,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # check projection dependencies
-    if not args.projection and (args.proj_pattern or args.infrared):
-        parser.error("Invalid argument: 'proj_pattern', 'infrared' only allowed if 'proj' is set")
+    #if not args.projection and (args.proj_pattern or args.infrared):
+    #    parser.error("Invalid argument: 'proj_pattern', 'infrared' only allowed if 'proj' is set")
 
     # Handle the default value for '--num_pattern' based on the value of '--proj_pattern'
     if args.num_pattern is None:
