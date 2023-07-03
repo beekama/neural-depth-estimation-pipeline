@@ -108,6 +108,8 @@ def testDataGenerator(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='random test data generation tool',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--helpme", "-help", action="help", help="Show the helper")
+    
     parser.add_argument('--material_path', '-mat', help='Path for material resources', default=MATERIALS_PATH)
     parser.add_argument('--mesh_path', '-mesh', help='Path to .OBJ or .BLEND resource', default=MESH_PATH)
 
