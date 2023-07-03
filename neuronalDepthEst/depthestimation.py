@@ -114,7 +114,7 @@ for epoch in range(num_epochs):
 
         current_loss += loss.item()
 
-    print ("Epoch: ", epoch, " Loss: ", current_loss)
+    print(f"Epoch {epoch + 1}/{num_epochs} - Loss: {current_loss / len(train_loader):.4f}")
 
 
 ####################
@@ -136,4 +136,4 @@ with torch.no_grad():
         
         test_loss += loss.item()
 
-    print("Test loss: ", test_loss)
+    print(f"Test Loss: {test_loss / len(test_loader):.4f}")
