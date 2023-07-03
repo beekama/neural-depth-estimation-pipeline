@@ -23,8 +23,7 @@ def extract_depth(filename):
     print(np.min(ddata))
     print(np.max(ddata))
     del hfile['depth']
-    hfile.create_dataset('depth', data=normalize(ddata, 0, 20))
-    #hfile['depth'] = normalize(ddata, 0, 20)
+    hfile.create_dataset('depth', data=normalize(ddata, 0, 1))
     hfile.close()
 
 if __name__ == "__main__":

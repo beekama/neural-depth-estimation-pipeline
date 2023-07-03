@@ -99,7 +99,7 @@ def testDataGenerator(args):
 
     # normalize depth
     depth = data['depth']
-    data['depth'] = readhdf5.normalize(depth, 0, 20) # todo change hardcoded scala-values
+    data['depth'] = readhdf5.normalize(depth, 0, 1)
     # write data to .hdf5 container
     bproc.writer.write_hdf5("output/", data)
 
