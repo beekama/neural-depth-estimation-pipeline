@@ -3,8 +3,10 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
+import matplotlib.pyplot as plt
 from PIL import Image
 import os
+import numpy as np
 
 class DepthEstimationNet(nn.Module):
     def __init__(self):
@@ -124,6 +126,7 @@ for epoch in range(num_epochs):
 # enable evaluation mode
 model.eval()
 test_loss = 0.0
+results = []
 
 with torch.no_grad():
     for images, depths in test_loader:
@@ -136,4 +139,38 @@ with torch.no_grad():
         
         test_loss += loss.item()
 
+        # store image, estimated depth and true depth for plotting
+        batch_results = {
+            "images": images.cpu(),
+            "depth_gt": depths.cpu(),
+            "depth_pred": outputs.cpu()
+        }
+        results.append(batch_results)
+
+
     print(f"Test Loss: {test_loss / len(test_loader):.4f}")
+
+# Plotting results
+num_samples = min(5, len(results))
+print(len(results))
+fig, axes = plt.subplots(num_samples, 3, figsize=(256,256))
+
+for i in range(num_samples):
+    image = np.transpose(results[i]["images"][0], (1, 2, 0))
+    depth_gt = np.squeeze(results[i]["depth_gt"][0])
+    depth_pred = np.squeeze(results[i]["depth_pred"][0])
+
+    axes[i].imshow(image)
+    axes[i].set_title("Image")
+    axes[i].axis("off")
+
+    axes[1].imshow(depth_gt, cmap="gray")
+    axes[1].set_title("Ground Truth Depth")
+    axes[1].axis("off")
+
+    axes[2].imshow(depth_pred, cmap="gray")
+    axes[2].set_title("Predicted Depth")
+    axes[2].axis("off")
+
+plt.tight_layout()
+plt.show()
