@@ -14,7 +14,8 @@ import readhdf5, create_striped_img
 
 ### DEFAULTS ###
 MATERIALS_PATH = 'resources/materials'
-MESH_PATH = 'resources/test/'
+MESH_PATH = 'resources/test/' # todo consitens
+OUTPUT_DIR = 'output'
 
 NUM_OF_OBJECTS = 3
 NUM_OF_PERSPECTIVES = 5
@@ -27,18 +28,19 @@ def testDataGenerator(args):
     # enable cycles renderer and sets some speedup options for rendering
     bproc.init()
 
-    #RESOURCES = ['indoor plant_02.blend', "12221_Cat_v1_l3.obj"]
-    RESOURCES = ['plant_bunt.blend', 'sofa_bunt.blend']
+    RESOURCES = ['sofa_bunt.obj', 'cupboard.obj', 'kallax.obj', 'kommode.obj', 'klappstuhl.obj']
+    #RESOURCES = ['plant_bunt.blend', 'sofa_bunt.blend']
     
     
     # load materias and objects
     materials = bproc.loader.load_ccmaterials(args.material_path, ["Bricks", "Wood", "Carpet", "Tile", "Marble"])
     interior_objects = []
     for i in range (args.num_meshes):
-        interior_objects.extend(bproc.loader.load_blend(args.mesh_path +  RESOURCES[randrange(len(RESOURCES))]))
+        #interior_objects.extend(bproc.loader.load_blend(args.mesh_path +  RESOURCES[randrange(len(RESOURCES))]))
+        interior_objects.extend(bproc.loader.load_obj(args.mesh_path +  RESOURCES[randrange(len(RESOURCES))]))
     
     # construct random room
-    objects = bproc.constructor.construct_random_room(used_floor_area=25, interior_objects=interior_objects,materials=materials, amount_of_extrusions=5)
+    objects = bproc.constructor.construct_random_room(used_floor_area=45, interior_objects=interior_objects,materials=materials, amount_of_extrusions=5)
     
     # light sources
     if not args.infrared:
@@ -49,6 +51,8 @@ def testDataGenerator(args):
     bvh_tree = bproc.object.create_bvh_tree_multi_objects(objects)
     floor = [obj for obj in objects if obj.get_name() == "Floor"][0]
     poses = 0
+    tries = 0
+
     # Get point-of-interest, the camera should look towards and determine starting point
     poi = bproc.object.compute_poi(objects)
     start_location = bproc.sampler.upper_region(floor, min_height=1.5, max_height=1.8)
@@ -56,7 +60,7 @@ def testDataGenerator(args):
     step_size = spline_vector/5
     current_loc = start_location
 
-    while poses < 5:
+    while tries < 10000 and poses < 5:
         # Sample random camera location above objects
         rand = np.random.uniform([-0.1, -0.3, 0], [0.1, 0.3, 0.05])
         location = current_loc + rand
@@ -68,12 +72,13 @@ def testDataGenerator(args):
         cam2world_matrix = bproc.math.build_transformation_mat(location, rotation_matrix)
         
         # check that obstacles are at least 1 meter away from camera and make sure the view is interesting enough
-        #if bproc.camera.perform_obstacle_in_view_check(cam2world_matrix, {"min":1.2}, bvh_tree) and \
-        #        bproc.camera.scene_coverage_score(cam2world_matrix) > 0.4 and \
-        #        floor.position_is_above_object(location):
-        #    # persist camera pose
-        bproc.camera.add_camera_pose(cam2world_matrix)
-        poses += 1
+        if bproc.camera.perform_obstacle_in_view_check(cam2world_matrix, {"min":0.8}, bvh_tree) and \
+                bproc.camera.scene_coverage_score(cam2world_matrix) > 0.4 and \
+                floor.position_is_above_object(location):
+            # persist camera pose
+            bproc.camera.add_camera_pose(cam2world_matrix)
+            poses += 1
+        tries += 1
             
     # define new light source as projector
     if args.projection:
@@ -87,7 +92,7 @@ def testDataGenerator(args):
         proj.setup_as_projector(pattern_img)
     
     # activate depth rendering
-    bproc.renderer.enable_depth_output(activate_antialiasing=False, output_dir='output', file_prefix='depth_', convert_to_distance=False)
+    bproc.renderer.enable_depth_output(activate_antialiasing=False, output_dir=args.output, file_prefix='depth_', convert_to_distance=False)
     #bproc.renderer.set_light_bounces(max_bounces=200, diffuse_bounces=200, glossy_bounces=200, transmission_bounces=200, transparent_max_bounces=200)
     #m bproc.material.add_alpha_channel_to_textures(blurry_edges=True)
     #bproc.renderer.toggle_stereo(True)
@@ -101,7 +106,7 @@ def testDataGenerator(args):
     depth = data['depth']
     data['depth'] = readhdf5.normalize(depth, 0, 1)
     # write data to .hdf5 container
-    bproc.writer.write_hdf5("output/", data)
+    bproc.writer.write_hdf5(args.output + "/", data)
 
 
 ### MAIN-METHOD ###
@@ -116,6 +121,8 @@ if __name__ == "__main__":
     parser.add_argument('--num_meshes', '-objects', help='Number of objects within one image', default=NUM_OF_OBJECTS)
     parser.add_argument('--num_perspectives', '-cam', help='Number of different perspectives', default=NUM_OF_PERSPECTIVES)
     parser.add_argument('--num_lightsources', '-light', help='Number of lightsources used in image', default=NUM_OF_LIGHTSOURCES)
+
+    parser.add_argument('--output', '-o', help='Path of output folder', default=OUTPUT_DIR) #todo remove tailing /
 
     # projection
     parser.add_argument('--projection', '-proj', action='store_true', help='Enable projection mode')
