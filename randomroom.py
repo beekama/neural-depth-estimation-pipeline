@@ -22,11 +22,53 @@ NUM_OF_PERSPECTIVES = 5
 NUM_OF_LIGHTSOURCES = 1
 
 
+def normalizeAndSave(bproc, data, outputfolder):
+    # normalize depth
+    depth = data['depth']
+    data['depth'] = readhdf5.normalize(depth, 0, 1)
+    # write data to .hdf5 container
+    bproc.writer.write_hdf5(outputfolder, data)
+
+
+def normalos(objects):
+    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
+    
+    # render whole pipeline
+    data = bproc.renderer.render()
+    # Apply stereo matching to each pair of images
+    data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
+    normalizeAndSave(bproc, data, args.output + "_normalos/")
+   
+
+def pattern(objects):
+    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
+    
+    pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
+    proj = bproc.types.Light()
+    proj.set_type('SPOT')
+    proj.set_energy(3000)
+    proj.setup_as_projector(pattern_img)
+   
+    # render whole pipeline
+    data = bproc.renderer.render()
+    # Apply stereo matching to each pair of images
+    data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
+    normalizeAndSave(bproc, data, args.output + "_pattern/")
+
+def infrared(objects):
+    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=0.0, emission_color=[1,1,1,1])
+    # render whole pipeline
+    data = bproc.renderer.render()
+    # Apply stereo matching to each pair of images
+    data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
+    normalizeAndSave(bproc, data, args.output + "_infrared/")
+
 
 def testDataGenerator(args):
     
     # enable cycles renderer and sets some speedup options for rendering
     bproc.init()
+    bproc.renderer.enable_depth_output(activate_antialiasing=False, output_dir=args.output, file_prefix='depth_', convert_to_distance=False)
 
     RESOURCES = ['sofa_bunt.obj', 'cupboard.obj', 'kallax.obj', 'kommode.obj', 'klappstuhl.obj']
     #RESOURCES = ['plant_bunt.blend', 'sofa_bunt.blend']
@@ -43,8 +85,8 @@ def testDataGenerator(args):
     objects = bproc.constructor.construct_random_room(used_floor_area=45, interior_objects=interior_objects,materials=materials, amount_of_extrusions=5)
     
     # light sources
-    if not args.infrared:
-        bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
+    #if not args.infrared:
+    #    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
 
 
     # init bvh tree containing all mesh objects
@@ -79,34 +121,10 @@ def testDataGenerator(args):
             bproc.camera.add_camera_pose(cam2world_matrix)
             poses += 1
         tries += 1
-            
-    # define new light source as projector
-    if args.projection:
-        if args.proj_pattern == "stripes":
-            pattern_img = create_striped_img.create_img(args.num_pattern)
-        else:
-            pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
-        proj = bproc.types.Light()
-        proj.set_type('SPOT')
-        proj.set_energy(3000)
-        proj.setup_as_projector(pattern_img)
-    
-    # activate depth rendering
-    bproc.renderer.enable_depth_output(activate_antialiasing=False, output_dir=args.output, file_prefix='depth_', convert_to_distance=False)
-    #bproc.renderer.set_light_bounces(max_bounces=200, diffuse_bounces=200, glossy_bounces=200, transmission_bounces=200, transparent_max_bounces=200)
-    #m bproc.material.add_alpha_channel_to_textures(blurry_edges=True)
-    #bproc.renderer.toggle_stereo(True)
-    
-    # render whole pipeline
-    data = bproc.renderer.render()
-    # Apply stereo matching to each pair of images
-    data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
 
-    # normalize depth
-    depth = data['depth']
-    data['depth'] = readhdf5.normalize(depth, 0, 1)
-    # write data to .hdf5 container
-    bproc.writer.write_hdf5(args.output + "/", data)
+    normalos(objects)
+    pattern(objects)
+    infrared(objects)
 
 
 ### MAIN-METHOD ###
@@ -126,9 +144,11 @@ if __name__ == "__main__":
 
     # projection
     parser.add_argument('--projection', '-proj', action='store_true', help='Enable projection mode')
-    parser.add_argument('--proj_pattern', '-pat', choices=['points', 'stripes'], default='stripes', help='Define projection pattern')
+    parser.add_argument('--proj_pattern', '-pat', choices=['points', 'stripes'], default='points', help='Define projection pattern')
     parser.add_argument('--num_pattern', '-npat', type=int, help='Number of points or stripes')
     parser.add_argument('--infrared', action='store_true', help='Turn off all additional lightsources')
+
+    parser.add_argument('--full', '-f', action='store_true', help='normal, pattern and infrared images')
 
     args = parser.parse_args()
 
