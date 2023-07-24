@@ -49,6 +49,16 @@ def pattern(objects):
     proj.set_energy(3000)
     proj.setup_as_projector(pattern_img)
    
+    # translate camera-position to create distance to projector-position
+    camera_matrix = bproc.camera.get_camera_pose()
+    rot_matrix = camera_matrix[0:3, 0:3]
+    upward = np.linalg.norm(rot_matrix[:,1]) 
+    camera_matrix[0:3,3]+= 0.1 * upward
+    # replace camera-position
+    bproc.utility.reset_keyframes()
+    bproc.camera.add_camera_pose(camera_matrix)
+    
+
     # render whole pipeline
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
@@ -122,8 +132,9 @@ def testDataGenerator(args):
             poses += 1
         tries += 1
 
-    normalos(objects)
+    ### !IMPORTANT! if "pattern" is executed it should be executed first as it changes the camera position ###
     pattern(objects)
+    normalos(objects)
     infrared(objects)
 
 
