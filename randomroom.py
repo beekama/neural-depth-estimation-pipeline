@@ -78,7 +78,7 @@ def testDataGenerator(args):
     
     # enable cycles renderer and sets some speedup options for rendering
     bproc.init()
-    bproc.renderer.enable_depth_output(activate_antialiasing=False, output_dir=args.output, file_prefix='depth_', convert_to_distance=False)
+    bproc.renderer.enable_depth_output(activate_antialiasing=False, file_prefix='depth_', convert_to_distance=False)
 
     RESOURCES = ['sofa_bunt.obj', 'cupboard.obj', 'kallax.obj', 'kommode.obj', 'klappstuhl.obj']
     #RESOURCES = ['plant_bunt.blend', 'sofa_bunt.blend']
