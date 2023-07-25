@@ -21,6 +21,8 @@ NUM_OF_OBJECTS = 3
 NUM_OF_PERSPECTIVES = 5
 NUM_OF_LIGHTSOURCES = 1
 
+light_sources = []
+
 
 def normalizeAndSave(bproc, data, outputfolder):
     # normalize depth
@@ -32,7 +34,8 @@ def normalizeAndSave(bproc, data, outputfolder):
 
 def normalos(objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
-    
+    # disable projector
+    [ls.set_energy(0) for ls in light_sources if ls.get_name() == "projector"]
     # render whole pipeline
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
@@ -48,6 +51,8 @@ def pattern(objects):
     proj.set_type('SPOT')
     proj.set_energy(3000)
     proj.setup_as_projector(pattern_img)
+    proj.set_name("projector")
+    light_sources.append(proj)
    
     # translate camera-position to create distance to projector-position
     camera_matrix = bproc.camera.get_camera_pose()
@@ -133,9 +138,12 @@ def testDataGenerator(args):
         tries += 1
 
     ### !IMPORTANT! if "pattern" is executed it should be executed first as it changes the camera position ###
-    pattern(objects)
+    ### correct order: pattern -> infrared -> normalos
+    if args.full or args.projection:
+        pattern(objects)
+    if args.full or args.infrared:
+        infrared(objects)
     normalos(objects)
-    infrared(objects)
 
 
 ### MAIN-METHOD ###
