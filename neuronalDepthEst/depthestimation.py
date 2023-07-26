@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import os
 import numpy as np
+import argparse
 
 class DepthEstimationNet(nn.Module):
     def __init__(self):
@@ -64,7 +65,15 @@ class DepthDataset(Dataset):
 #############################
 ### Set up Neural Network ###
 #############################
-data_path = "train"
+parser = argparse.ArgumentParser(description='neuronal depth estimator',
+                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("--helpme", "-help", action="help", help="Show the helper")
+
+parser.add_argument('--folder', '-f', help='folder, which contains test, train and depthfolders', required=True)
+
+args = parser.parse_args()
+
+data_path = args.folder
 model = DepthEstimationNet()
 
 # Transformation-function for images 
@@ -73,10 +82,11 @@ transform = transforms.Compose([
 ])
 
 # Set up loaders for training and test data
-dataset = DepthDataset(data_path, transform=transform)
-train_size = int(0.8 * len(dataset))
-test_size = len(dataset) - train_size
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+train_dataset = DepthDataset(data_path + "/train", transform=transform)
+test_dataset = DepthDataset(data_path + "/test", transform=transform)
+#train_size = int(0.8 * len(dataset))
+#test_size = len(dataset) - train_size
+#train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
 # todo: adapt batch_size - 1
 train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
@@ -149,7 +159,7 @@ with torch.no_grad():
 
 
     print(f"Test Loss: {test_loss / len(test_loader):.4f}")
-
+'''
 # Plotting results
 num_samples = min(5, len(results))
 print(len(results))
@@ -174,3 +184,4 @@ for i in range(num_samples):
 
 plt.tight_layout()
 plt.show()
+'''
