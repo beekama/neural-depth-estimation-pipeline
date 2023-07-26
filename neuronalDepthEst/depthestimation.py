@@ -8,33 +8,7 @@ from PIL import Image
 import os
 import numpy as np
 import argparse
-
-class DepthEstimationNet(nn.Module):
-    def __init__(self):
-        super(DepthEstimationNet, self).__init__()
-
-        ### network layers
-        # 3-channel-input(RGB), apply 64 filters of size 3x3
-        # move filter one pixel at a time (stride)
-        # add one pixel at each side to keep spatial dimension
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
-        self.relu1 = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.relu2 = nn.ReLU(inplace=True)
-
-        # Output a single-channel depth map
-        self.conv3 = nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1)  
-
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.relu1(x)
-        x = self.conv2(x)
-        x = self.relu2(x)
-        x = self.conv3(x)
-
-        return x
-
+import UNet
 
 class DepthDataset(Dataset):
     def __init__(self, data_path, transform=None):
@@ -50,9 +24,8 @@ class DepthDataset(Dataset):
         image_path = os.path.join(self.data_path, image_file)
         depth_path = os.path.join(self.data_path, "../depth_maps", image_file)
 
-        # todo: maybe ajust size
-        image = Image.open(image_path).convert("RGB").resize((100, 190))
-        depth = Image.open(depth_path).convert("L").resize((100, 190))
+        image = Image.open(image_path).convert("RGB")
+        depth = Image.open(depth_path).convert("L")
 
         if self.transform is not None:
             image = self.transform(image)
@@ -74,7 +47,8 @@ parser.add_argument('--folder', '-f', help='folder, which contains test, train a
 args = parser.parse_args()
 
 data_path = args.folder
-model = DepthEstimationNet()
+config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
+model = UNet.Model(config)
 
 # Transformation-function for images 
 transform = transforms.Compose([
