@@ -10,6 +10,12 @@ import numpy as np
 import argparse
 import UNet
 
+def save_img(image, path):
+    # float32 to uint8
+    img = np.clip((image * 255), 0, 255).astype(np.uint8)
+    img = transforms.ToPILImage()(img)
+    img.save(path)
+    
 class DepthDataset(Dataset):
     def __init__(self, data_path, transform=None):
         self.data_path = data_path
@@ -136,29 +142,28 @@ with torch.no_grad():
 
 
     print(f"Test Loss: {test_loss / len(test_loader):.4f}")
-'''
-# Plotting results
-num_samples = min(5, len(results))
-print(len(results))
-fig, axes = plt.subplots(num_samples, 3, figsize=(256,256))
 
-for i in range(num_samples):
-    image = np.transpose(results[i]["images"][0], (1, 2, 0))
-    depth_gt = np.squeeze(results[i]["depth_gt"][0])
-    depth_pred = np.squeeze(results[i]["depth_pred"][0])
+########################
+### PLOTTING RESULTS ###
+########################
 
-    axes[i].imshow(image)
-    axes[i].set_title("Image")
-    axes[i].axis("off")
+# Create directory to save images
+result_dir = "depth_results"
+if not os.path.exists(result_dir):
+    os.makedirs(result_dir)
 
-    axes[1].imshow(depth_gt, cmap="gray")
-    axes[1].set_title("Ground Truth Depth")
-    axes[1].axis("off")
+for i, batch_results in enumerate(results):
+#for i in range(num_samples):
+    images = batch_results["images"].permute(0,2,3,1).numpy()
+    depth_gt = batch_results["depth_gt"].squeeze(1).numpy()
+    depth_pred = batch_results["depth_pred"].squeeze(1).numpy()
 
-    axes[2].imshow(depth_pred, cmap="gray")
-    axes[2].set_title("Predicted Depth")
-    axes[2].axis("off")
 
-plt.tight_layout()
-plt.show()
-'''
+    for j in range(images.shape[0]):
+        image_path = f"{result_dir}/{i:03d}_{j}_image.png"
+        detph_gt_path = f"{result_dir}/{i:03d}_{j}_depth_gt.png"
+        depth_pred_path = f"{result_dir}/{i:03d}_{j}_depth_pred.png"
+
+        save_img(images[j], image_path)
+        save_img(depth_gt[j], detph_gt_path)
+        save_img(depth_pred[j], depth_pred_path)
