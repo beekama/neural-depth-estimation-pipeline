@@ -92,8 +92,7 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
 
         outputs = model(images)
-        # add new dimension for single-channel depth map
-        loss = criterion(outputs, depths.unsqueeze(1))  
+        loss = criterion(outputs, depths)  
         # calculate gradients with respect to loss
         loss.backward()
         # update model parameters
@@ -120,8 +119,7 @@ with torch.no_grad():
         depths = depths.to(device)
 
         outputs = model(images)
-        # add new dimension for single-channel depth map
-        loss = criterion(outputs, depths.unsqueeze(1)) 
+        loss = criterion(outputs, depths) 
         
         test_loss += loss.item()
 
