@@ -101,13 +101,16 @@ for epoch in range(num_epochs):
         current_loss += loss.item()
 
     print(f"Epoch {epoch + 1}/{num_epochs} - Loss: {current_loss / len(train_loader):.4f}")
-
+torch.save(model.state_dict(), "model.pth")
 
 ####################
 ### TESTING LOOP ###
 ####################
 
 # enable evaluation mode
+config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
+model = UNet.Model(config)
+model.load_state_dict(torch.load("model.pth"))
 model.eval()
 model.to(device)
 test_loss = 0.0
