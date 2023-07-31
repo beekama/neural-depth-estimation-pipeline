@@ -40,12 +40,11 @@ def normalos(objects):
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
     data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
-    normalizeAndSave(bproc, data, args.output + "_normalos/")
+    normalizeAndSave(bproc, data, "NORMALOS/" + args.output)
    
 
 def pattern(objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
-    
     pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
     proj = bproc.types.Light()
     proj.set_type('SPOT')
@@ -68,7 +67,7 @@ def pattern(objects):
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
     data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
-    normalizeAndSave(bproc, data, args.output + "_pattern/")
+    normalizeAndSave(bproc, data, "PATTERN/" + args.output)
 
 def infrared(objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=0.0, emission_color=[1,1,1,1])
@@ -76,7 +75,7 @@ def infrared(objects):
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
     data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
-    normalizeAndSave(bproc, data, args.output + "_infrared/")
+    normalizeAndSave(bproc, data, "INFRARED/" + args.output)
 
 
 def testDataGenerator(args):
@@ -159,7 +158,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_perspectives', '-cam', help='Number of different perspectives', default=NUM_OF_PERSPECTIVES)
     parser.add_argument('--num_lightsources', '-light', help='Number of lightsources used in image', default=NUM_OF_LIGHTSOURCES)
 
-    parser.add_argument('--output', '-o', help='Path of output folder', default=OUTPUT_DIR) #todo remove tailing /
+    parser.add_argument('--output', '-o', help='Path of output subfolder (main: NORMALOS, PATTERN, INFRARED)', default=OUTPUT_DIR) #todo remove tailing /
 
     # projection
     parser.add_argument('--projection', '-proj', action='store_true', help='Enable projection mode')
