@@ -14,9 +14,22 @@ Automatic dataset generation for neural depth estimation in active setups
 Infrared mode disables all light-sources except of the projector. </br>
 ```blenderproc run randomroom.py -proj -pat <points/stripes> -npat <NUM_OF_STRIPES/POINTS> <--infrared>```
 ## Visualize data
-The default value for the maximum depth is set to 20. Since a normalization in the range [0,1] *(scientific standard)* was performed, this value must now be adjusted. </br></br>
+The default value for the maximum depth is set to 20. Since a normalization in the range [0,1] *(scientific standard)* was performed, this value must now be adjusted. </br>
 ```blenderproc vis --depth_max=1 hdf5 <path/to/file.hdf5>```
-
+## Extract data
+Extract hdf5 files and split into images.png and depth.png</br>
+```python scripts/extract_images.py -i <.../NORMALOS/*> -o <.../test&train>```
+## Split into training-set and test-set
+TODO - By now this step has to be done manually. </br>
+## Neuronal Depth Estimator
+### Train data
+Only train and save the model: </br>
+```python neuronalDepthEst/depthestimation.py -f <folder> --train``` </br>
+Train and test the model and plot/save results: </br>
+```python neuronalDepthEst/depthestimation.py -f <folder> --full```
+### Test data
+Load saved model and test/plot: </br>
+```python neuronalDepthEst/depthestimation.py -f <folder> --test```
 # Todo:
 ## minor stuff
 \[X\] Change current depth-scale from 0-20 to 0-1 </br>
