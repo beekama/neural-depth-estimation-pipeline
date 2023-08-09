@@ -10,12 +10,96 @@ import numpy as np
 import argparse
 import UNet
 
+BATCH_SIZE = 4
+
 def save_img(image, path):
     # float32 to uint8
     img = np.clip((image * 255), 0, 255).astype(np.uint8)
     img = transforms.ToPILImage()(img)
     img.save(path)
-    
+
+def train(model, device, train_loader, criterion, optimizer):
+    num_epochs = 10
+
+    model.to(device)
+
+    for epoch in range(num_epochs):
+        model.train()
+        current_loss = 0.0
+
+        for images, depths in train_loader:
+            images = images.to(device)
+            depths = depths.to(device)
+
+            # reset gradients of all tensors to zero
+            optimizer.zero_grad()
+
+            outputs = model(images)
+            loss = criterion(outputs, depths)  
+            # calculate gradients with respect to loss
+            loss.backward()
+            # update model parameters
+            optimizer.step()
+
+            current_loss += loss.item()
+
+        print(f"Epoch {epoch + 1}/{num_epochs} - Loss: {current_loss / len(train_loader):.4f}")
+    torch.save(model.state_dict(), "model.pth")
+
+def test(model, device, test_loader, criterion):
+    # enable evaluation mode
+    config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
+    model = UNet.Model(config)
+    model.load_state_dict(torch.load("model.pth"))
+    model.eval()
+    model.to(device)
+    test_loss = 0.0
+    results = []
+
+    with torch.no_grad():
+        for images, depths in test_loader:
+            images = images.to(device)
+            depths = depths.to(device)
+
+            outputs = model(images)
+            loss = criterion(outputs, depths) 
+            
+            test_loss += loss.item()
+
+            # store image, estimated depth and true depth for plotting
+            batch_results = {
+                "images": images.cpu(),
+                "depth_gt": depths.cpu(),
+                "depth_pred": outputs.cpu()
+            }
+            results.append(batch_results)
+    return results
+
+
+    print(f"Test Loss: {test_loss / len(test_loader):.4f}")
+
+def plot(results, output_dir):
+    # Create directory to save images
+    result_dir = output_dir + "/depth_results"
+    if not os.path.exists(result_dir):
+        os.makedirs(result_dir)
+
+    for i, batch_results in enumerate(results):
+    #for i in range(num_samples):
+        images = batch_results["images"].permute(0,2,3,1).numpy()
+        depth_gt = batch_results["depth_gt"].squeeze(1).numpy()
+        depth_pred = batch_results["depth_pred"].squeeze(1).numpy()
+
+
+        for j in range(images.shape[0]):
+            image_path = f"{result_dir}/{(i*BATCH_SIZE+j):03d}_image.png"
+            detph_gt_path = f"{result_dir}/{(i*BATCH_SIZE+j):03d}_depth_gt.png"
+            depth_pred_path = f"{result_dir}/{(i*BATCH_SIZE+j):03d}_depth_pred.png"
+
+            save_img(images[j], image_path)
+            save_img(depth_gt[j], detph_gt_path)
+            save_img(depth_pred[j], depth_pred_path)
+
 class DepthDataset(Dataset):
     def __init__(self, data_path, transform=None):
         self.data_path = data_path
@@ -44,126 +128,45 @@ class DepthDataset(Dataset):
 #############################
 ### Set up Neural Network ###
 #############################
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def depthestimation(output_dir, training):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
+    model = UNet.Model(config)
 
-parser = argparse.ArgumentParser(description='neuronal depth estimator',
-                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("--helpme", "-help", action="help", help="Show the helper")
+    # Transformation-function for images 
+    transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
 
-parser.add_argument('--folder', '-f', help='folder, which contains test, train and depthfolders', required=True)
+    # Set up loaders for training and test data
+    train_dataset = DepthDataset(output_dir + "/train", transform=transform)
+    test_dataset = DepthDataset(output_dir + "/test", transform=transform)
 
-args = parser.parse_args()
+    # todo: adapt batch_size - 1
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-data_path = args.folder
-config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
-model = UNet.Model(config)
+    # Define the loss function and optimizer
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-# Transformation-function for images 
-transform = transforms.Compose([
-    transforms.ToTensor()
-])
+    if training:
+        train(model, device, train_loader, criterion, optimizer)
+    results = test(model, device, test_loader, criterion)
+    plot(results, output_dir)
 
-# Set up loaders for training and test data
-train_dataset = DepthDataset(data_path + "/train", transform=transform)
-test_dataset = DepthDataset(data_path + "/test", transform=transform)
-#train_size = int(0.8 * len(dataset))
-#test_size = len(dataset) - train_size
-#train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+if __name__ == "__main__":
+    
 
-# todo: adapt batch_size - 1
-train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False)
+    parser = argparse.ArgumentParser(description='neuronal depth estimator',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--helpme", "-help", action="help", help="Show the helper")
 
-# Define the loss function and optimizer
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+    parser.add_argument('--folder', '-f', help='folder, which contains test, train and depthfolders', required=True)
+
+    args = parser.parse_args()
+
+    depthestimation(args.folder, True)
 
 
-#####################
-### TRAINING LOOP ###
-#####################
-num_epochs = 10
-
-model.to(device)
-
-for epoch in range(num_epochs):
-    model.train()
-    current_loss = 0.0
-
-    for images, depths in train_loader:
-        images = images.to(device)
-        depths = depths.to(device)
-
-        # reset gradients of all tensors to zero
-        optimizer.zero_grad()
-
-        outputs = model(images)
-        loss = criterion(outputs, depths)  
-        # calculate gradients with respect to loss
-        loss.backward()
-        # update model parameters
-        optimizer.step()
-
-        current_loss += loss.item()
-
-    print(f"Epoch {epoch + 1}/{num_epochs} - Loss: {current_loss / len(train_loader):.4f}")
-torch.save(model.state_dict(), "model.pth")
-
-####################
-### TESTING LOOP ###
-####################
-
-# enable evaluation mode
-config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
-model = UNet.Model(config)
-model.load_state_dict(torch.load("model.pth"))
-model.eval()
-model.to(device)
-test_loss = 0.0
-results = []
-
-with torch.no_grad():
-    for images, depths in test_loader:
-        images = images.to(device)
-        depths = depths.to(device)
-
-        outputs = model(images)
-        loss = criterion(outputs, depths) 
         
-        test_loss += loss.item()
-
-        # store image, estimated depth and true depth for plotting
-        batch_results = {
-            "images": images.cpu(),
-            "depth_gt": depths.cpu(),
-            "depth_pred": outputs.cpu()
-        }
-        results.append(batch_results)
-
-
-    print(f"Test Loss: {test_loss / len(test_loader):.4f}")
-
-########################
-### PLOTTING RESULTS ###
-########################
-
-# Create directory to save images
-result_dir = "depth_results"
-if not os.path.exists(result_dir):
-    os.makedirs(result_dir)
-
-for i, batch_results in enumerate(results):
-#for i in range(num_samples):
-    images = batch_results["images"].permute(0,2,3,1).numpy()
-    depth_gt = batch_results["depth_gt"].squeeze(1).numpy()
-    depth_pred = batch_results["depth_pred"].squeeze(1).numpy()
-
-
-    for j in range(images.shape[0]):
-        image_path = f"{result_dir}/{i:03d}_{j}_image.png"
-        detph_gt_path = f"{result_dir}/{i:03d}_{j}_depth_gt.png"
-        depth_pred_path = f"{result_dir}/{i:03d}_{j}_depth_pred.png"
-
-        save_img(images[j], image_path)
-        save_img(depth_gt[j], detph_gt_path)
-        save_img(depth_pred[j], depth_pred_path)

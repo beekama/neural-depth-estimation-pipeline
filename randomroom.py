@@ -29,7 +29,7 @@ def normalizeAndSave(bproc, data, outputfolder):
     depth = data['depth']
     data['depth'] = readhdf5.normalize(depth, 0, 1)
     # write data to .hdf5 container
-    bproc.writer.write_hdf5(outputfolder, data)
+    bproc.writer.write_hdf5(outputfolder, data, append_to_existing_output=True)
 
 
 def normalos(objects):
@@ -40,7 +40,7 @@ def normalos(objects):
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
     data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
-    normalizeAndSave(bproc, data, "NORMALOS/" + args.output)
+    normalizeAndSave(bproc, data, args.output + "/NORMALOS")
    
 
 def pattern(objects):
@@ -67,7 +67,7 @@ def pattern(objects):
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
     data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
-    normalizeAndSave(bproc, data, "PATTERN/" + args.output)
+    normalizeAndSave(bproc, data, args.output + "/PATTERN")
 
 def infrared(objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=0.0, emission_color=[1,1,1,1])
@@ -75,7 +75,7 @@ def infrared(objects):
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
     data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
-    normalizeAndSave(bproc, data, "INFRARED/" + args.output)
+    normalizeAndSave(bproc, data, args.output + "/INFRARED")
 
 
 def testDataGenerator(args):
