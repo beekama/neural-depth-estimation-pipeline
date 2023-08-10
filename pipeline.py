@@ -34,7 +34,7 @@ if __name__ == "__main__":
     extract_images(args.output_dir + '/PATTERN/', 'neuronalDepthEst/' + args.output_dir + '/PATTERN')
     extract_images(args.output_dir + '/INFRARED', 'neuronalDepthEst/' + args.output_dir + '/INFRARED')
 
-    depthestimation("neuronalDepthEst/test/NORMALOS", True)
-    depthestimation("neuronalDepthEst/test/PATTERN", True)
-    depthestimation("neuronalDepthEst/test/INFRARED", True)
+    depthestimation("neuronalDepthEst/" + args.output_dir + "/NORMALOS", True)
+    depthestimation("neuronalDepthEst/" + args.output_dir + "/PATTERN", True)
+    depthestimation("neuronalDepthEst/" + args.output_dir + "/INFRARED", True)
 
