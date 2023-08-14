@@ -27,9 +27,6 @@ if __name__ == "__main__":
     parser.add_argument('--num_poses', '-poses', help='Number of poses within one frame', default=POSES)
 
     args = parser.parse_args()
-
-    os.makedirs(args.output_dir, exist_ok=True)
-    os.makedirs("neuronalDepthEst" + args.output_dir, exist_ok=True)
     
     if (args.loop):
         loop(args.output_dir, args.num_poses)
