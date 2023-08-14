@@ -11,6 +11,7 @@ import argparse
 import UNet
 
 BATCH_SIZE = 4
+EPOCHES=10
 
 def save_img(image, path):
     # float32 to uint8
@@ -18,12 +19,11 @@ def save_img(image, path):
     img = transforms.ToPILImage()(img)
     img.save(path)
 
-def train(model, device, train_loader, criterion, optimizer):
-    num_epochs = 10
+def train(model, device, train_loader, criterion, optimizer, num_epoches):
 
     model.to(device)
 
-    for epoch in range(num_epochs):
+    for epoch in range(num_epoches):
         model.train()
         current_loss = 0.0
 
@@ -43,7 +43,7 @@ def train(model, device, train_loader, criterion, optimizer):
 
             current_loss += loss.item()
 
-        print(f"Epoch {epoch + 1}/{num_epochs} - Loss: {current_loss / len(train_loader):.4f}")
+        print(f"Epoch {epoch + 1}/{num_epoches} - Loss: {current_loss / len(train_loader):.4f}")
     torch.save(model.state_dict(), "model.pth")
 
 def test(model, device, test_loader, criterion):
@@ -128,7 +128,7 @@ class DepthDataset(Dataset):
 #############################
 ### Set up Neural Network ###
 #############################
-def depthestimation(output_dir, training):
+def depthestimation(output_dir, training, num_epoches):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
     model = UNet.Model(config)
@@ -151,7 +151,7 @@ def depthestimation(output_dir, training):
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     if training:
-        train(model, device, train_loader, criterion, optimizer)
+        train(model, device, train_loader, criterion, optimizer, num_epoches)
     results = test(model, device, test_loader, criterion)
     plot(results, output_dir)
 
@@ -160,13 +160,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='neuronal depth estimator',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    
     parser.add_argument("--helpme", "-help", action="help", help="Show the helper")
-
     parser.add_argument('--folder', '-f', help='folder, which contains test, train and depthfolders', required=True)
+    parser.add_argument("--num_epoches", "-epoches", help="num of training-epoches", default=EPOCHES)
 
     args = parser.parse_args()
 
-    depthestimation(args.folder, True)
+    depthestimation(args.folder, True, args.num_epoches)
 
 
         

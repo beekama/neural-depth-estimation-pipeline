@@ -17,6 +17,7 @@ MATERIALS_PATH = 'resources/materials'
 MESH_PATH = 'resources/test/' # todo consitens
 OUTPUT_DIR = 'output'
 
+NUM_OF_POSES = 5
 NUM_OF_OBJECTS = 3
 NUM_OF_PERSPECTIVES = 5
 NUM_OF_LIGHTSOURCES = 1
@@ -113,10 +114,10 @@ def testDataGenerator(args):
     poi = bproc.object.compute_poi(objects)
     start_location = bproc.sampler.upper_region(floor, min_height=1.5, max_height=1.8)
     spline_vector = poi-start_location
-    step_size = spline_vector/5
+    step_size = spline_vector/NUM_OF_POSES
     current_loc = start_location
 
-    while tries < 10000 and poses < 5:
+    while tries < 10000 and poses < NUM_OF_POSES:
         # Sample random camera location above objects
         rand = np.random.uniform([-0.1, -0.3, 0], [0.1, 0.3, 0.05])
         location = current_loc + rand
@@ -154,7 +155,8 @@ if __name__ == "__main__":
     parser.add_argument('--material_path', '-mat', help='Path for material resources', default=MATERIALS_PATH)
     parser.add_argument('--mesh_path', '-mesh', help='Path to .OBJ or .BLEND resource', default=MESH_PATH)
 
-    parser.add_argument('--num_meshes', '-objects', help='Number of objects within one image', default=NUM_OF_OBJECTS)
+    parser.add_argument('--num_poses', '-poses', help='Number of poses within one frame', default=NUM_OF_POSES)
+    parser.add_argument('--num_meshes', '-objects', help='Number of objects within one frame', default=NUM_OF_OBJECTS)
     parser.add_argument('--num_perspectives', '-cam', help='Number of different perspectives', default=NUM_OF_PERSPECTIVES)
     parser.add_argument('--num_lightsources', '-light', help='Number of lightsources used in image', default=NUM_OF_LIGHTSOURCES)
 
@@ -169,6 +171,9 @@ if __name__ == "__main__":
     parser.add_argument('--full', '-f', action='store_true', help='normal, pattern and infrared images')
 
     args = parser.parse_args()
+    
+    if int(args.num_poses) < 1 or int(args.num_poses) > 10:
+        parser.error("Invalid argument: 'num_poses' must be between 1 and 10!")
 
     # check projection dependencies
     #if not args.projection and (args.proj_pattern or args.infrared):
