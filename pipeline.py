@@ -28,11 +28,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    os.makedirs(RAW_FOLDER, exist_ok=True)
-    os.makedirs("neuronalDepthEst" + RAW_FOLDER, exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs("neuronalDepthEst" + args.output_dir, exist_ok=True)
     
     if (args.loop):
-        loop(RAW_FOLDER, args.num_poses)
+        loop(args.output_dir, args.num_poses)
     
     extract_images(args.output_dir + '/NORMALOS/', 'neuronalDepthEst/' + args.output_dir + '/NORMALOS')
     extract_images(args.output_dir + '/PATTERN/', 'neuronalDepthEst/' + args.output_dir + '/PATTERN')
