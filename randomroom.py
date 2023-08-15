@@ -33,7 +33,7 @@ def normalizeAndSave(bproc, data, outputfolder):
     bproc.writer.write_hdf5(outputfolder, data, append_to_existing_output=True)
 
 
-def normalos(objects):
+def normalos(bproc, objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
     # disable projector
     [ls.set_energy(0) for ls in light_sources if ls.get_name() == "projector"]
@@ -44,7 +44,7 @@ def normalos(objects):
     normalizeAndSave(bproc, data, args.output + "/NORMALOS")
    
 
-def pattern(objects):
+def pattern(bproc, objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
     pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
     proj = bproc.types.Light()
@@ -70,7 +70,7 @@ def pattern(objects):
     data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
     normalizeAndSave(bproc, data, args.output + "/PATTERN")
 
-def infrared(objects):
+def infrared(bproc, objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=0.0, emission_color=[1,1,1,1])
     # render whole pipeline
     data = bproc.renderer.render()
@@ -140,10 +140,10 @@ def testDataGenerator(args):
     ### !IMPORTANT! if "pattern" is executed it should be executed first as it changes the camera position ###
     ### correct order: pattern -> infrared -> normalos
     if args.full or args.projection:
-        pattern(objects)
+        pattern(bproc, objects)
     if args.full or args.infrared:
-        infrared(objects)
-    normalos(objects)
+        infrared(bproc, objects)
+    normalos(bproc, objects)
 
 
 ### MAIN-METHOD ###
