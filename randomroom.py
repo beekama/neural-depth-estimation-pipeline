@@ -44,7 +44,7 @@ def normalos(bproc, objects):
     normalizeAndSave(bproc, data, args.output + "/NORMALOS")
    
 
-def pattern(bproc, objects):
+def pattern(bproc, objects, bvh_tree):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
     pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
     proj = bproc.types.Light()
@@ -55,20 +55,26 @@ def pattern(bproc, objects):
     light_sources.append(proj)
    
     # translate camera-position to create distance to projector-position
-    camera_matrix = bproc.camera.get_camera_pose()
-    rot_matrix = camera_matrix[0:3, 0:3]
+    cam2world = bproc.camera.get_camera_pose()
+    rot_matrix = cam2world[0:3, 0:3]
     upward = np.linalg.norm(rot_matrix[:,1]) 
-    camera_matrix[0:3,3]+= 0.1 * upward
+    cam2world[0:3,3]+= 0.1 * upward
     # replace camera-position
     bproc.utility.reset_keyframes()
-    bproc.camera.add_camera_pose(camera_matrix)
-    
 
-    # render whole pipeline
-    data = bproc.renderer.render()
-    # Apply stereo matching to each pair of images
-    data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
-    normalizeAndSave(bproc, data, args.output + "/PATTERN")
+    # check if new camera position is still interesting enough
+    if bproc.camera.perform_obstacle_in_view_check(cam2world, {"min":0.8}, bvh_tree) and \
+                bproc.camera.scene_coverage_score(cam2world) > 0.4:
+        bproc.camera.add_camera_pose(cam2world)
+        
+        # render whole pipeline
+        data = bproc.renderer.render()
+        # Apply stereo matching to each pair of images
+        data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
+        normalizeAndSave(bproc, data, args.output + "/PATTERN")
+    else:
+        print("Relocated camera position too close to obstacle or too little szene coverage!", file=sys.stderr)
+        sys.exit(1)
 
 def infrared(bproc, objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=0.0, emission_color=[1,1,1,1])
@@ -140,7 +146,7 @@ def testDataGenerator(args):
     ### !IMPORTANT! if "pattern" is executed it should be executed first as it changes the camera position ###
     ### correct order: pattern -> infrared -> normalos
     if args.full or args.projection:
-        pattern(bproc, objects)
+        pattern(bproc, objects, bvh_tree)
     if args.full or args.infrared:
         infrared(bproc, objects)
     normalos(bproc, objects)
