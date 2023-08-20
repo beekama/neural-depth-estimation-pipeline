@@ -23,15 +23,15 @@ def extract_images(folder_in, folder_out):
     #     if len(os.listdir(folder_out)) != 0:
     #         raise Exception("output directory must be empty")
     os.makedirs(folder_out + "/train", exist_ok=True)
+    os.makedirs(folder_out + "/valid", exist_ok=True)
     os.makedirs(folder_out + "/test", exist_ok=True)
     os.makedirs(folder_out + "/depth_maps", exist_ok=True)
 
     # count hdf5-files
     num_of_files = len([file for file in os.listdir(folder_in)])
-    files_treshhold = int(num_of_files*0.8)
-    print(num_of_files)
-    
-    files_treshhold = int(num_of_files*0.8)
+    threshold_train = int(num_of_files*0.7)
+    threshold_valid = int(num_of_files*0.9)
+
     counter = 0
     # read folders file for file
     #for filename in list(glob.iglob(folder_in, recursive=True)):
@@ -42,8 +42,10 @@ def extract_images(folder_in, folder_out):
         img_data = Image.fromarray(hfile['colors'][()])
         if img_data.mode != 'RGB':
             img_data = img_data.convert('RGB')
-        if (counter < files_treshhold):
+        if (counter < threshold_train):
             img_data.save(folder_out + "/train/" + f"{counter:03d}.png")
+        elif (counter < threshold_valid):
+            img_data.save(folder_out + "/valid/" + f"{counter:03d}.png")
         else:
             img_data.save(folder_out + "/test/" + f"{counter:03d}.png")
 

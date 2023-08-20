@@ -1,4 +1,5 @@
 import torch
+torch.cuda.empty_cache()
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
@@ -10,7 +11,7 @@ import numpy as np
 import argparse
 import UNet
 
-BATCH_SIZE = 4
+BATCH_SIZE = 1
 EPOCHES=10
 
 def save_img(image, path):
@@ -19,14 +20,14 @@ def save_img(image, path):
     img = transforms.ToPILImage()(img)
     img.save(path)
 
-def train(model, device, train_loader, criterion, optimizer, num_epoches):
+def train(model, device, train_loader, valid_loader, criterion, optimizer, num_epoches):
 
     model.to(device)
 
     for epoch in range(num_epoches):
         model.train()
-        current_loss = 0.0
-
+        train_loss = 0.0
+        torch.cuda.empty_cache()
         for images, depths in train_loader:
             images = images.to(device)
             depths = depths.to(device)
@@ -41,9 +42,21 @@ def train(model, device, train_loader, criterion, optimizer, num_epoches):
             # update model parameters
             optimizer.step()
 
-            current_loss += loss.item()
+            train_loss += loss.item()
+    
+        model.eval()
+        valid_loss = 0.0
+        torch.cuda.empty_cache()
+        for images, depths in valid_loader:
+            images = images.to(device)
+            depths = depths.to(device)
 
-        print(f"Epoch {epoch + 1}/{num_epoches} - Loss: {current_loss / len(train_loader):.4f}")
+            outputs = model(images)
+            loss = criterion(outputs, depths)
+            valid_loss += loss.item()
+
+        print(f"Epoch {epoch + 1}/{num_epoches} - Loss: {train_loss / len(train_loader):.4f} \t\t Validation Loss: {valid_loss / len(valid_loader)}")
+
     torch.save(model.state_dict(), "model.pth")
 
 def test(model, device, test_loader, criterion):
@@ -129,6 +142,8 @@ class DepthDataset(Dataset):
 ### Set up Neural Network ###
 #############################
 def depthestimation(output_dir, training, num_epoches):
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:4"
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
     model = UNet.Model(config)
@@ -140,18 +155,20 @@ def depthestimation(output_dir, training, num_epoches):
 
     # Set up loaders for training and test data
     train_dataset = DepthDataset(output_dir + "/train", transform=transform)
+    valid_dataset = DepthDataset(output_dir + "/valid", transform=transform)
     test_dataset = DepthDataset(output_dir + "/test", transform=transform)
 
     # todo: adapt batch_size - 1
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    valid_loader = DataLoader(valid_dataset, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    # Define the loss function and optimizer
+    # Define the loss function and optimizer 
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     if training:
-        train(model, device, train_loader, criterion, optimizer, num_epoches)
+        train(model, device, train_loader, valid_loader, criterion, optimizer, num_epoches)
     results = test(model, device, test_loader, criterion)
     plot(results, output_dir)
 
