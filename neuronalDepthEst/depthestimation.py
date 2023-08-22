@@ -27,7 +27,6 @@ def train(model, device, train_loader, valid_loader, criterion, optimizer, num_e
     for epoch in range(num_epoches):
         model.train()
         train_loss = 0.0
-        torch.cuda.empty_cache()
         for images, depths in train_loader:
             images = images.to(device)
             depths = depths.to(device)
@@ -46,7 +45,6 @@ def train(model, device, train_loader, valid_loader, criterion, optimizer, num_e
     
         model.eval()
         valid_loss = 0.0
-        torch.cuda.empty_cache()
         for images, depths in valid_loader:
             images = images.to(device)
             depths = depths.to(device)
@@ -142,7 +140,7 @@ class DepthDataset(Dataset):
 ### Set up Neural Network ###
 #############################
 def depthestimation(output_dir, training, num_epoches):
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:4"
+    #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:4"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
