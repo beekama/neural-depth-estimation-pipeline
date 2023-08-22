@@ -3,9 +3,9 @@
 import subprocess
 from tqdm import tqdm
 
-def loop(output_dir, poses):
+def loop(output_dir, poses, runs):
 	# normalos
-	for i in tqdm(range(250)):
+	for i in tqdm(range(runs)):
 		command = f"blenderproc run randomroom.py -o {output_dir} --full --num_poses {poses}"
 		process = subprocess.run(command.split(), stdout=subprocess.PIPE)
 
