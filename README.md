@@ -5,7 +5,6 @@ Automatic dataset generation for neural depth estimation in active setups
 - [BlenderProc](https://github.com/DLR-RM/BlenderProc)
 - ```python3 -m pip install -r req.txt```
 - Download [Resources](https://nextcloud.beekama.de/index.php/s/RZq2xxSGmWeKQHF) and unpack folder to ./blenderproc/
-- Download [UNet-Module](https://github.com/Henningson/SSSLsquared/blob/main/models/UNet.py) and place it into the 'neuronalDepthEst'-folder
 # Usage
 ## Generate random room
 ### No pattern
