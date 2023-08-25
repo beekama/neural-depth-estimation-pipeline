@@ -33,14 +33,9 @@ def normalizeAndSave(bproc, data, outputfolder):
     # write data to .hdf5 container
     bproc.writer.write_hdf5(outputfolder, data, append_to_existing_output=True)
 
-def init(bvh_tree_):
-    bproc.init()
-    bproc.renderer.enable_depth_output(activate_antialiasing=False, file_prefix='depth_', convert_to_distance=False)
-    bvh_tree = bvh_tree_
-
 
 def normalos(bproc, objects):
-    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
+    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
     # disable projector
     [ls.set_energy(0) for ls in light_sources if ls.get_name() == "projector"]
     # render whole pipeline
@@ -50,12 +45,12 @@ def normalos(bproc, objects):
     normalizeAndSave(bproc, data, args.output + "/NORMALOS")
    
 
-def pattern(bproc, objects, bvh_tree):
-    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
+def pattern(bproc, objects):
+    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "ceiling"], emission_strength=3.0, emission_color=[1,1,1,1])
     pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
     proj = bproc.types.Light()
     proj.set_type('SPOT')
-    proj.set_energy(3000)
+    proj.set_energy(35000)
     proj.setup_as_projector(pattern_img)
     proj.set_name("projector")
     light_sources.append(proj)
@@ -68,20 +63,10 @@ def pattern(bproc, objects, bvh_tree):
     cam2world[0:3,3]+= 0.1 * upward
     # replace camera-position
     bproc.utility.reset_keyframes()
-
-    # check if new camera position is still interesting enough
-    if bproc.camera.perform_obstacle_in_view_check(cam2world, {"min":0.8}, bvh_tree) and \
-                bproc.camera.scene_coverage_score(cam2world) > 0.4:
-        bproc.camera.add_camera_pose(cam2world)
-        
-        # render whole pipeline
-        data = bproc.renderer.render()
-        # Apply stereo matching to each pair of images
-        data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
-        normalizeAndSave(bproc, data, args.output + "/PATTERN/" + str(args.num_pattern) + "/")
-    else:
-        print("Relocated camera position too close to obstacle or too little szene coverage!", file=sys.stderr)
-        sys.exit(1)
+    bproc.camera.add_camera_pose(cam2world)
+    data = bproc.renderer.render()
+    data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
+    normalizeAndSave(bproc, data, args.output + "/PATTERN/" + str(args.num_pattern) + "/")
 
 def infrared(bproc, objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=0.0, emission_color=[1,1,1,1])
@@ -98,64 +83,36 @@ def testDataGenerator(args):
     bproc.init()
     bproc.renderer.enable_depth_output(activate_antialiasing=False, file_prefix='depth_', convert_to_distance=False)
 
-    RESOURCES = ['sofa_bunt.obj', 'cupboard.obj', 'kallax.obj', 'kommode.obj', 'klappstuhl.obj']
-    #RESOURCES = ['plant_bunt.blend', 'sofa_bunt.blend']
+    # load szene from blend file
+    objects = bproc.loader.load_blend("vergleich.blend")
     
-    
-    # load materias and objects
-    materials = bproc.loader.load_ccmaterials(args.material_path, ["Bricks", "Wood", "Carpet", "Tile", "Marble"])
-    interior_objects = []
-    for i in range (args.num_meshes):
-        #interior_objects.extend(bproc.loader.load_blend(args.mesh_path +  RESOURCES[randrange(len(RESOURCES))]))
-        interior_objects.extend(bproc.loader.load_obj(args.mesh_path +  RESOURCES[randrange(len(RESOURCES))]))
-    
-    # construct random room
-    objects = bproc.constructor.construct_random_room(used_floor_area=45, interior_objects=interior_objects,materials=materials, amount_of_extrusions=5)
-    
-    # light sources
-    #if not args.infrared:
-    #    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
-
-
-    # init bvh tree containing all mesh objects
-    bvh_tree = bproc.object.create_bvh_tree_multi_objects(objects)
-    floor = [obj for obj in objects if obj.get_name() == "Floor"][0]
     poses = 0
     tries = 0
 
     # Get point-of-interest, the camera should look towards and determine starting point
     poi = bproc.object.compute_poi(objects)
-    start_location = bproc.sampler.upper_region(floor, min_height=1.5, max_height=1.8)
-    spline_vector = poi-start_location
-    step_size = spline_vector/NUM_OF_POSES
-    current_loc = start_location
 
     while tries < 10000 and poses < NUM_OF_POSES:
         # Sample random camera location above objects
         rand = np.random.uniform([-0.1, -0.3, 0], [0.1, 0.3, 0.05])
-        location = current_loc + rand
-        current_loc += step_size
-
+        # set location from blend
+        location = [ 7, -2, 4]
+        #location = [7, 0, 3]
         # Compute rotation based on vector going from location towards poi
         rotation_matrix = bproc.camera.rotation_from_forward_vec(poi-location, inplane_rot=np.random.uniform(-0.7854, 0.7854))
         # Add homog cam pose based on location an rotation
         cam2world_matrix = bproc.math.build_transformation_mat(location, rotation_matrix)
         
-        # check that obstacles are at least 1 meter away from camera and make sure the view is interesting enough
-        if bproc.camera.perform_obstacle_in_view_check(cam2world_matrix, {"min":0.8}, bvh_tree) and \
-                bproc.camera.scene_coverage_score(cam2world_matrix) > 0.4 and \
-                floor.position_is_above_object(location):
-            # persist camera pose
-            bproc.camera.add_camera_pose(cam2world_matrix)
-            poses += 1
+        bproc.camera.add_camera_pose(cam2world_matrix)
+        poses += 1
         tries += 1
 
     ### !IMPORTANT! if "pattern" is executed it should be executed first as it changes the camera position ###
     ### correct order: pattern -> infrared -> normalos
     os.makedirs(args.output + "/PATTERN/" + str(args.num_pattern), exist_ok=True)
-    os.makedirs(args.output + "/INFRARED/" + str(args.num_pattern), exist_ok=True)
-    pattern(bproc, objects, bvh_tree)
-    infrared(bproc, objects)
+    #os.makedirs(args.output + "/INFRARED/" + str(args.num_pattern), exist_ok=True)
+    pattern(bproc, objects)
+    #infrared(bproc, objects)
         
 
 
