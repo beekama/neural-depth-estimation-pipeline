@@ -9,10 +9,10 @@ from PIL import Image
 import os
 import numpy as np
 import argparse
-import resnet
+import oniroResnet
 
 BATCH_SIZE = 1
-EPOCHES=1
+EPOCHES=10
 
 def save_img(image, path):
     # float32 to uint8
@@ -145,7 +145,7 @@ def depthestimation(output_dir, training, num_epoches):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
-    model = resnet.ResNet(block=resnet.BasicBlock,layers=[2,2,2,2], num_classes=1)
+    model = oniroResnet.ResnetModel(num_in_layers=3)
     
     #input_data = torch.randn((BATCH_SIZE, 3, ))
     # Transformation-function for images 
