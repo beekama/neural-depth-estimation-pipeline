@@ -30,6 +30,17 @@ SAVE_INTRINSICS = False
 
 light_sources = []
 
+
+def save_pattern(pattern, filename):
+    arr_reshaped = pattern.reshape(pattern.shape[0], -1)
+    np.savetxt(filename, arr_reshaped)
+
+
+def load_pattern(filename):
+    pat = np.loadtxt(filename)
+    return pat.reshape( 720, 1280, 4)
+
+
 def normalizeAndSave(bproc, data, outputfolder):
     # normalize depth
     depth = data['depth']
@@ -51,14 +62,16 @@ def normalos(bproc, objects):
 
 def pattern(bproc, objects, bvh_tree):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
-    pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
+    pattern_img = load_pattern("PATTERN.txt")
+    #pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
+    #save_pattern(pattern_img, "PATTERN.txt")
     proj = bproc.types.Light()
     proj.set_type('SPOT')
     proj.set_energy(3000)
     proj.setup_as_projector(pattern_img)
     proj.set_name("projector")
     light_sources.append(proj)
-   
+
     # translate camera-position to create distance to projector-position
     cam2world = bproc.camera.get_camera_pose()
     rot_matrix = cam2world[0:3, 0:3]
