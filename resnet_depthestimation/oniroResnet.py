@@ -369,8 +369,8 @@ class ResnetModel(nn.Module):
 
         self.upconv1 = upconv(32, 16, 3, 2)
         self.iconv1 = conv(16 + 2, 16, 3, 1)
-        #self.disp1_layer = get_disp(16)
-        self.disp1_layer = nn.Conv2d(16,1,kernel_size=3, padding=1)
+        self.disp1_layer = get_disp(16)
+        #self.disp1_layer = nn.Conv2d(16,1,kernel_size=3, padding=1)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

@@ -10,6 +10,10 @@ import os
 import numpy as np
 import argparse
 import oniroResnet
+sys.path.append('SMDE/models/networks')
+import monodepth2
+
+from torchvision.utils import save_image
 
 BATCH_SIZE = 1
 EPOCHES=10
@@ -35,7 +39,15 @@ def train(model, device, train_loader, valid_loader, criterion, optimizer, num_e
             optimizer.zero_grad()
 
             outputs = model(images)
-            loss = criterion(outputs, depths)  
+            print("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT")
+            print(outputs)
+            count = 0
+            for el in outputs:
+                im = el
+                save_image(im, "bild" + str(count) + ".png")
+                count+=1
+            outputs_gray = torch.mean(outputs[0], dim=1, keepdim=True)
+            loss = criterion(outputs_gray, depths)  
             # calculate gradients with respect to loss
             loss.backward()
             # update model parameters
@@ -50,7 +62,12 @@ def train(model, device, train_loader, valid_loader, criterion, optimizer, num_e
             depths = depths.to(device)
 
             outputs = model(images)
-            loss = criterion(outputs, depths)
+            print("VAAAAAAAAAAAAAAAAAAAAAAALLLLLL")
+            print(outputs)
+            for el in outputs:
+                print(el)
+            outputs_gray = torch.mean(outputs[0], dim=1, keepdim=True)
+            loss = criterion(outputs_gray, depths)
             valid_loss += loss.item()
 
         print(f"Epoch {epoch + 1}/{num_epoches} - Loss: {train_loss / len(train_loader):.4f} \t\t Validation Loss: {valid_loss / len(valid_loader)}")
@@ -73,16 +90,17 @@ def test(model, device, test_loader, criterion):
             depths = depths.to(device)
 
             outputs = model(images)
-            loss = criterion(outputs, depths) 
+            outputs_gray = torch.mean(outputs[0], dim=1, keepdim=True)
+            loss = criterion(outputs_gray, depths) 
             
             test_loss += loss.item()
             print("DEOHT: " + str(images.cpu().shape))
-            print("DEOHT: " + str(outputs.cpu().shape))
+            print("DEOHT: " + str(outputs_gray.cpu().shape))
             # store image, estimated depth and true depth for plotting
             batch_results = {
                 "images": images.cpu(),
                 "depth_gt": depths.cpu(),
-                "depth_pred": outputs.cpu()
+                "depth_pred": outputs_gray.cpu()
             }
             results.append(batch_results)
     return results
