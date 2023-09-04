@@ -54,6 +54,7 @@ def normalos(bproc, objects):
     # disable projector
     [ls.set_energy(0) for ls in light_sources if ls.get_name() == "projector"]
     # render whole pipeline
+    bproc.renderer.toggle_stereo(True)
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
     data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
@@ -83,9 +84,10 @@ def pattern(bproc, objects, bvh_tree):
     # check if new camera position is still interesting enough
     if bproc.camera.perform_obstacle_in_view_check(cam2world, {"min":0.8}, bvh_tree) and \
                 bproc.camera.scene_coverage_score(cam2world) > 0.4:
-        bproc.camera.add_camera_pose(cam2world)
         
+        bproc.camera.add_camera_pose(cam2world)
         # render whole pipeline
+        bproc.renderer.toggle_stereo(True)
         data = bproc.renderer.render()
         # Apply stereo matching to each pair of images
         data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
@@ -97,6 +99,7 @@ def pattern(bproc, objects, bvh_tree):
 def infrared(bproc, objects):
     bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=0.0, emission_color=[1,1,1,1])
     # render whole pipeline
+    bproc.renderer.toggle_stereo(True)
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
     data["stereo-depth"], data["disparity"] = bproc.postprocessing.stereo_global_matching(data["colors"], disparity_filter=False)
