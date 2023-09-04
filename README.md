@@ -3,6 +3,7 @@ Automatic dataset generation for neural depth estimation in active setups
 
 # Requirements
 - [BlenderProc](https://github.com/DLR-RM/BlenderProc)
+- torch version matching cuda version eg. for ACID: ```conda install pytorch=1.11.0 torchvision=0.12 torchaudio=0.11 cudatoolkit=11.5 -c pytorch -c conda-forge```
 - ```python3 -m pip install -r req.txt```
 - Download [Resources](https://nextcloud.beekama.de/index.php/s/RZq2xxSGmWeKQHF) and unpack folder to ./blenderproc/
 # Usage
