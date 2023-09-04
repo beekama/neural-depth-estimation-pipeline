@@ -1,7 +1,4 @@
 argparse
 numpy
-random
-sys
 h5py
-os
-bpy
+matplotlib
