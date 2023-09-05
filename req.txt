@@ -2,3 +2,4 @@ argparse
 numpy
 h5py
 matplotlib
+tqdm
