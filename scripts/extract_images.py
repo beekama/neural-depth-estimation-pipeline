@@ -26,6 +26,8 @@ def extract_images(folder_in, folder_out):
     os.makedirs(folder_out + "/valid", exist_ok=True)
     os.makedirs(folder_out + "/test", exist_ok=True)
     os.makedirs(folder_out + "/depth_maps", exist_ok=True)
+    os.makedirs(folder_out + "/disparity", exist_ok=True)
+    os.makedirs(folder_out + "/disparity_depth", exist_ok=True)
 
     # count hdf5-files
     num_of_files = len([file for file in os.listdir(folder_in)])
@@ -39,7 +41,8 @@ def extract_images(folder_in, folder_out):
         file = os.path.join(folder_in, filename)
         # extract image and depth
         hfile = h5py.File(file, "r+")
-        img_data = Image.fromarray(hfile['colors'][()])
+        #img_data = Image.fromarray(hfile['colors'][()])
+        img_data = Image.fromarray(hfile["colors"][0])
         if img_data.mode != 'RGB':
             img_data = img_data.convert('RGB')
         if (counter < threshold_train):
@@ -48,8 +51,25 @@ def extract_images(folder_in, folder_out):
             img_data.save(folder_out + "/valid/" + f"{counter:03d}.png")
         else:
             img_data.save(folder_out + "/test/" + f"{counter:03d}.png")
+        print("shape color" + str(hfile["colors"][0].shape))
 
-        normalized = hfile['depth'][()] * 256
+        if hfile["colors"].size > 1:
+            print("shape disparity" + str(hfile["colors"][1].shape))
+            img_data = Image.fromarray(hfile["colors"][1])
+            if img_data.mode != 'RGB':
+                img_data = img_data.convert('RGB')
+            img_data.save(folder_out + "/disparity/" + f"{counter:03d}.png")
+
+        if hfile["depth"].size > 1:
+            print((hfile["depth"][1].shape))
+            normalized = hfile['depth'][1] * 256
+            depth_data = Image.fromarray(normalized)
+            if depth_data.mode != 'L':
+                depth_data = depth_data.convert('L')
+            depth_data.save(folder_out + "/disparity_depth/" + f"{counter:03d}.png")
+
+        print((hfile["depth"].shape))
+        normalized = hfile['depth'][0] * 256
         depth_data = Image.fromarray(normalized)
         print(depth_data.mode)
         #depth_data.convert('RGB')
