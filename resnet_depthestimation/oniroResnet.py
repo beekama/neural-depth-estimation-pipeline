@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import importlib
 
-
+# 
 class conv(nn.Module):
     def __init__(self, num_in_layers, num_out_layers, kernel_size, stride):
         super(conv, self).__init__()
@@ -16,10 +16,13 @@ class conv(nn.Module):
         self.normalize = nn.BatchNorm2d(num_out_layers)
 
     def forward(self, x):
+        # padding needed to maintain spatial dimensions of input tensor after convoution
         p = int(np.floor((self.kernel_size-1)/2))
         p2d = (p, p, p, p)
+        # pads input with zeros using padding then applies convolution
         x = self.conv_base(F.pad(x, p2d))
         x = self.normalize(x)
+        # activation function elu
         return F.elu(x, inplace=True)
 
 
@@ -358,14 +361,17 @@ class ResnetModel(nn.Module):
         self.upconv4 = upconv(256, 128, 3, 2)
         self.iconv4 = conv(filters[0] + 128, 128, 3, 1)
         self.disp4_layer = get_disp(128)
+        #self.disp4_layer = nn.Conv2d(128, 1, kernel_size=3, padding=1)
 
         self.upconv3 = upconv(128, 64, 3, 1) #
         self.iconv3 = conv(64 + 64 + 2, 64, 3, 1)
         self.disp3_layer = get_disp(64)
+        #self.disp3_layer = nn.Conv2d(64, 1, kernel_size=3, padding=1)
 
         self.upconv2 = upconv(64, 32, 3, 2)
         self.iconv2 = conv(64 + 32 + 2, 32, 3, 1)
         self.disp2_layer = get_disp(32)
+        #self.disp2_layer = nn.Conv2d(32, 1, kernel_size=3, padding=1)
 
         self.upconv1 = upconv(32, 16, 3, 2)
         self.iconv1 = conv(16 + 2, 16, 3, 1)
@@ -425,4 +431,4 @@ class ResnetModel(nn.Module):
         concat1 = torch.cat((upconv1, self.udisp2), 1)
         iconv1 = self.iconv1(concat1)
         self.disp1 = self.disp1_layer(iconv1)
-        return self.disp1 #, self.disp2, self.disp3, self.disp4
+        return self.disp1 , self.disp2, self.disp3, self.disp4
