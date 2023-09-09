@@ -10,9 +10,11 @@ import os
 import numpy as np
 import argparse
 import UNet
+import UNetResNet
 
 BATCH_SIZE = 1
 EPOCHES=10
+MODEL = UNetResNet # UNet | UNetResNet
 
 def save_img(image, path):
     # float32 to uint8
@@ -59,8 +61,6 @@ def train(model, device, train_loader, valid_loader, criterion, optimizer, num_e
 
 def test(model, device, test_loader, criterion):
     # enable evaluation mode
-    config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
-    model = UNet.Model(config)
     model.load_state_dict(torch.load("model.pth"))
     model.eval()
     model.to(device)
@@ -89,9 +89,15 @@ def test(model, device, test_loader, criterion):
 
     print(f"Test Loss: {test_loss / len(test_loader):.4f}")
 
-def plot(results, output_dir):
+def plot(results, output_dir, model_type):
     # Create directory to save images
-    result_dir = output_dir + "/depth_results"
+    if model_type == UNet:
+        result_dir = output_dir + "/depth_results_unet"
+    elif model_type == UNetResNet:
+        result_dir = output_dir + "/depth_result_unetresnet"
+    else:
+        raise Exception(Exception("Unknown Model - unable to set output-path"))
+    
     if not os.path.exists(result_dir):
         os.makedirs(result_dir)
 
@@ -139,12 +145,12 @@ class DepthDataset(Dataset):
 #############################
 ### Set up Neural Network ###
 #############################
-def depthestimation(output_dir, training, num_epoches):
+def depthestimation(output_dir, training, num_epoches, model_type):
     #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:4"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
-    model = UNet.Model(config)
+    model = model_type.Model(config)
 
     # Transformation-function for images 
     transform = transforms.Compose([
@@ -168,7 +174,7 @@ def depthestimation(output_dir, training, num_epoches):
     if training:
         train(model, device, train_loader, valid_loader, criterion, optimizer, num_epoches)
     results = test(model, device, test_loader, criterion)
-    plot(results, output_dir)
+    plot(results, output_dir, model_type)
 
 if __name__ == "__main__":
     
@@ -179,10 +185,8 @@ if __name__ == "__main__":
     parser.add_argument("--helpme", "-help", action="help", help="Show the helper")
     parser.add_argument('--folder', '-f', help='folder, which contains test, train and depthfolders', required=True)
     parser.add_argument("--num_epoches", "-epoches", help="num of training-epoches", default=EPOCHES)
+    parser.add_argument('--model', choices=['UNet', 'UNetResNet', 'UNetR+'], nargs="+", required=True)
 
     args = parser.parse_args()
 
-    depthestimation(args.folder, True, args.num_epoches)
-
-
-        
+    depthestimation(args.folder, True, args.num_epoches, args.model)
