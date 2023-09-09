@@ -3,6 +3,10 @@
 import argparse
 import loop
 
+from neuronalDepthEst import UNet
+from neuronalDepthEst import UNetResNet
+from neuronalDepthEst import UNetRplus
+
 # import helper-scripts
 import os
 import sys
@@ -24,12 +28,19 @@ POSES = 5
 
 EPOCHES = 10
 TRAINING = True
+MODEL = "Unet" # "Unetresnet" "Unetplus"
 
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='pipeline from random-room-generation to neuronal monocular depth-estimation',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    
+    model_choices = {
+    'Unet': UNet,
+    'Unetresnet': UNetResNet,
+    'Unetplus': UNetRplus,
+    }
     
     parser.add_argument('--loop', action=argparse.BooleanOptionalAction, help='enable/disable image-generation', default=False)
     parser.add_argument('--output_dir', '-o', help='name of outputfolder', default=RAW_FOLDER)    
@@ -41,6 +52,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_scene', help='File to save scene to', default="")
     parser.add_argument('--save_camera', help='File to save camerapose to', default="")
     parser.add_argument('--save_camera_intrinsics', help='File to save camera-intrinsics from/to', default="")
+    parser.add_argument('--model', choices=model_choices.keys(), help="select model type", default=UNet)
 
     args = parser.parse_args()
     
@@ -51,7 +63,7 @@ if __name__ == "__main__":
     extract_images(args.output_dir + '/PATTERN/', 'neuronalDepthEst/' + args.output_dir + '/PATTERN')
     extract_images(args.output_dir + '/INFRARED', 'neuronalDepthEst/' + args.output_dir + '/INFRARED')
 
-    depthestimation("neuronalDepthEst/" + args.output_dir + "/NORMALOS", args.training, EPOCHES)
-    depthestimation("neuronalDepthEst/" + args.output_dir + "/PATTERN", args.training, EPOCHES)
-    depthestimation("neuronalDepthEst/" + args.output_dir + "/INFRARED", args.training, EPOCHES)
+    depthestimation("neuronalDepthEst/" + args.output_dir + "/NORMALOS", args.training, EPOCHES, model_choices[args.model])
+    depthestimation("neuronalDepthEst/" + args.output_dir + "/PATTERN", args.training, EPOCHES, model_choices[args.model])
+    depthestimation("neuronalDepthEst/" + args.output_dir + "/INFRARED", args.training, EPOCHES, model_choices[args.model])
 

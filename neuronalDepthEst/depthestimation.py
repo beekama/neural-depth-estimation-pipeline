@@ -11,10 +11,10 @@ import numpy as np
 import argparse
 import UNet
 import UNetResNet
+import UNetRplus
 
 BATCH_SIZE = 1
 EPOCHES=10
-MODEL = UNetResNet # UNet | UNetResNet
 
 def save_img(image, path):
     # float32 to uint8
@@ -94,7 +94,7 @@ def plot(results, output_dir, model_type):
     if model_type == UNet:
         result_dir = output_dir + "/depth_results_unet"
     elif model_type == UNetResNet:
-        result_dir = output_dir + "/depth_result_unetresnet"
+        result_dir = output_dir + "/depth_results_unetresnet"
     else:
         raise Exception(Exception("Unknown Model - unable to set output-path"))
     
@@ -182,11 +182,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='neuronal depth estimator',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
+    model_choices = {
+    'Unet': UNet,
+    'Unetresnet': UNetResNet,
+    'Unetplus': UNetRplus,
+    }
+
     parser.add_argument("--helpme", "-help", action="help", help="Show the helper")
     parser.add_argument('--folder', '-f', help='folder, which contains test, train and depthfolders', required=True)
     parser.add_argument("--num_epoches", "-epoches", help="num of training-epoches", default=EPOCHES)
-    parser.add_argument('--model', choices=['UNet', 'UNetResNet', 'UNetR+'], nargs="+", required=True)
+    parser.add_argument('--model', choices=model_choices.keys(), help="select model type", required=True)
 
     args = parser.parse_args()
 
-    depthestimation(args.folder, True, args.num_epoches, args.model)
+    depthestimation(args.folder, True, args.num_epoches, model_choices[args.model])
