@@ -6,7 +6,7 @@ from PIL import Image
 def extract_images(folder_in, folder_out):
     # deterministische bearbeitung bei wildcards
     os.environ["LC_COLLATE"]="en_US.UTF-8" 
-    
+
     os.makedirs(folder_out + "/train", exist_ok=True)
     os.makedirs(folder_out + "/valid", exist_ok=True)
     os.makedirs(folder_out + "/test", exist_ok=True)
@@ -34,7 +34,8 @@ def extract_images(folder_in, folder_out):
         else:
             img_data.save(folder_out + "/test/" + f"{counter:03d}.png")
         print("shape color" + str(hfile["colors"][0].shape))
-
+        print(img_data)
+        print(hfile["colors"])
         if hfile["colors"].size > 1:
             print("shape disparity" + str(hfile["colors"][1].shape))
             img_data = Image.fromarray(hfile["colors"][1])
