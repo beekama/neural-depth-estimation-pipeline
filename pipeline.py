@@ -36,12 +36,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='pipeline from random-room-generation to neuronal monocular depth-estimation',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
-    model_choices = {
-    'Unet': UNet,
-    'Unetresnet': UNetResNet,
-    'Unetplus': UNetRplus,
-    }
-    
     parser.add_argument('--loop', action=argparse.BooleanOptionalAction, help='enable/disable image-generation', default=False)
     parser.add_argument('--output_dir', '-o', help='name of outputfolder', default=RAW_FOLDER)    
     parser.add_argument('--num_poses', '-poses', help='Number of poses within one frame', default=POSES)
@@ -52,7 +46,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_scene', help='File to save scene to', default="")
     parser.add_argument('--save_camera', help='File to save camerapose to', default="")
     parser.add_argument('--save_camera_intrinsics', help='File to save camera-intrinsics from/to', default="")
-    parser.add_argument('--model', choices=model_choices.keys(), help="select model type", default=UNet)
+    parser.add_argument('--model', choices={'Unet', 'Unetresnet', 'Unetplus', 'all'}, help="select model type", default=MODEL)
 
     args = parser.parse_args()
     
@@ -63,7 +57,21 @@ if __name__ == "__main__":
     extract_images(args.output_dir + '/PATTERN/', 'neuronalDepthEst/' + args.output_dir + '/PATTERN')
     extract_images(args.output_dir + '/INFRARED', 'neuronalDepthEst/' + args.output_dir + '/INFRARED')
 
-    depthestimation("neuronalDepthEst/" + args.output_dir + "/NORMALOS", args.training, EPOCHES, model_choices[args.model])
-    depthestimation("neuronalDepthEst/" + args.output_dir + "/PATTERN", args.training, EPOCHES, model_choices[args.model])
-    depthestimation("neuronalDepthEst/" + args.output_dir + "/INFRARED", args.training, EPOCHES, model_choices[args.model])
+    if args.model == "all":
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/NORMALOS", args.training, EPOCHES, 'Unet')
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/INFRARED", args.training, EPOCHES, 'Unet')
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/PATTERN", args.training, EPOCHES, 'Unetplus')
 
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/NORMALOS", args.training, EPOCHES, 'Unetresnet')
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/INFRARED", args.training, EPOCHES, 'Unetresnet')
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/PATTERN", args.training, EPOCHES, 'Unetplus')
+
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/NORMALOS", args.training, EPOCHES, 'Unetplus')
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/INFRARED", args.training, EPOCHES, 'Unetplus')
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/PATTERN", args.training, EPOCHES, 'Unetplus')
+    else: 
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/NORMALOS", args.training, EPOCHES, args.model)
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/INFRARED", args.training, EPOCHES, args.model)
+        depthestimation("neuronalDepthEst/" + args.output_dir + "/PATTERN", args.training, EPOCHES, args.model)
+
+    

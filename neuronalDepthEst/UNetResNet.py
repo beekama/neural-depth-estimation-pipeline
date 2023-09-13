@@ -32,7 +32,6 @@ class ResidualBlock(nn.Module):
         residual = x
         out = self.conv1(x)
         out = self.conv2(out)
-        print(out.shape)
         if self.downsample:
             residual = self.downsample(x)
         out += residual
