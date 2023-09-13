@@ -2,26 +2,11 @@ import h5py
 import argparse
 import os
 from PIL import Image
-import glob
 
-
-
-'''
-def count_files_in_folder(paths):
-    count = 0
-    for path in paths:
-        for root, dirs, files in os.walk(path):
-            count += len(files)
-    return count # todo not used
-'''
 def extract_images(folder_in, folder_out):
     # deterministische bearbeitung bei wildcards
     os.environ["LC_COLLATE"]="en_US.UTF-8" 
-
-    # check if output dir exists and is empty
-    # os.path.exists(folder_out):
-    #     if len(os.listdir(folder_out)) != 0:
-    #         raise Exception("output directory must be empty")
+    
     os.makedirs(folder_out + "/train", exist_ok=True)
     os.makedirs(folder_out + "/valid", exist_ok=True)
     os.makedirs(folder_out + "/test", exist_ok=True)
@@ -35,13 +20,10 @@ def extract_images(folder_in, folder_out):
     threshold_valid = int(num_of_files*0.9)
 
     counter = 0
-    # read folders file for file
-    #for filename in list(glob.iglob(folder_in, recursive=True)):
     for filename in os.listdir(folder_in):
         file = os.path.join(folder_in, filename)
         # extract image and depth
         hfile = h5py.File(file, "r+")
-        #img_data = Image.fromarray(hfile['colors'][()])
         img_data = Image.fromarray(hfile["colors"][0])
         if img_data.mode != 'RGB':
             img_data = img_data.convert('RGB')
