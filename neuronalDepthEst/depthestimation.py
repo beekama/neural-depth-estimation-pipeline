@@ -15,6 +15,7 @@ import UNetRplus
 
 BATCH_SIZE = 1
 EPOCHES=10
+COMBINED = False
 
 model_choices = {
     'Unet': UNet,
@@ -110,8 +111,10 @@ def plot(results, output_dir, model_type):
         os.makedirs(result_dir)
 
     for i, batch_results in enumerate(results):
-    #for i in range(num_samples):
-        images = batch_results["images"].permute(0,2,3,1).numpy()
+        if args.combined:
+            images = batch_results["images"].permute(0,2,3,1)[:,:,:,:3].numpy()
+        else:
+            images = batch_results["images"].permute(0,2,3,1).numpy()
         depth_gt = batch_results["depth_gt"].squeeze(1).numpy()
         depth_pred = batch_results["depth_pred"].squeeze(1).numpy()
 
@@ -139,14 +142,17 @@ class DepthDataset(Dataset):
         image_path = os.path.join(self.data_path, image_file)
         depth_path = os.path.join(self.data_path, "../depth_maps", image_file)
 
-        image = Image.open(image_path).convert("RGB")
+        if args.combined:
+            image = np.loadtxt(image_path).reshape( 512, 512, 6)
+        else:
+            image = Image.open(image_path).convert("RGB")
         depth = Image.open(depth_path).convert("L")
 
         if self.transform is not None:
             image = self.transform(image)
             depth = self.transform(depth)
 
-        return image, depth
+        return image.float(), depth     ## todo evtl float fuer normale bilder weg
 
 
 
@@ -158,7 +164,7 @@ def depthestimation(output_dir, training, num_epoches, model_type):
     model_type = model_choices[model_type]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
+    config={'in_channels': 6, 'out_channels': 1, 'features': [64, 128, 256, 512]}
     model = model_type.Model(config)
 
     # Transformation-function for images 
@@ -196,7 +202,8 @@ if __name__ == "__main__":
     parser.add_argument('--folder', '-f', help='folder, which contains test, train and depthfolders', required=True)
     parser.add_argument("--num_epoches", "-epoches", help="num of training-epoches", default=EPOCHES)
     parser.add_argument('--model', choices={'Unet', 'Unetresnet', 'Unetplus'}, help="select model type", required=True)
+    parser.add_argument('--combined', action='store_true', help='Process combined input-image (eg. infrared & normal)')
 
     args = parser.parse_args()
 
-    depthestimation(args.folder, True, args.num_epoches, args.model)
+    depthestimation(args.folder, True, args.num_epoches, args.model, args.combined)
