@@ -23,10 +23,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='create errormap for depth estimation results',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--images', '-i', metavar=('est-file', 'gt-file'), help='both images used for error detection', required=True)
+    parser.add_argument('img1', help="path to first image")
+    parser.add_argument('img2', help="path to second image")
     
     args = parser.parse_args()
-    img_1, img_2 = args.images
 
-    create_error_map(img_1, img_2)
+    create_error_map(args.img1, args.img2)
 
