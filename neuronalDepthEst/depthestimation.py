@@ -96,7 +96,7 @@ def test(model, device, test_loader, criterion):
 
     print(f"Test Loss: {test_loss / len(test_loader):.4f}")
 
-def plot(results, output_dir, model_type):
+def plot(results, output_dir, model_type, combined):
     # Create directory to save images
     if model_type == UNet:
         result_dir = output_dir + "/depth_results_unet"
@@ -111,7 +111,7 @@ def plot(results, output_dir, model_type):
         os.makedirs(result_dir)
 
     for i, batch_results in enumerate(results):
-        if args.combined:
+        if combined:
             images = batch_results["images"].permute(0,2,3,1)[:,:,:,:3].numpy()
         else:
             images = batch_results["images"].permute(0,2,3,1).numpy()
@@ -129,10 +129,11 @@ def plot(results, output_dir, model_type):
             save_img(depth_pred[j], depth_pred_path)
 
 class DepthDataset(Dataset):
-    def __init__(self, data_path, transform=None):
+    def __init__(self, data_path, transform=None, combined=False):
         self.data_path = data_path
         self.image_files = os.listdir(data_path)
         self.transform = transform
+        self.combined = combined
 
     def __len__(self):
         return len(self.image_files)
@@ -142,7 +143,7 @@ class DepthDataset(Dataset):
         image_path = os.path.join(self.data_path, image_file)
         depth_path = os.path.join(self.data_path, "../depth_maps", image_file)
 
-        if args.combined:
+        if self.combined:
             image = np.loadtxt(image_path).reshape( 512, 512, 6)
         else:
             image = Image.open(image_path).convert("RGB")
@@ -159,12 +160,12 @@ class DepthDataset(Dataset):
 #############################
 ### Set up Neural Network ###
 #############################
-def depthestimation(output_dir, training, num_epoches, model_type):
+def depthestimation(output_dir, training, num_epoches, model_type, combined):
     # resolv model_type
     model_type = model_choices[model_type]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    config={'in_channels': 6, 'out_channels': 1, 'features': [64, 128, 256, 512]}
+    config={'in_channels': 3, 'out_channels': 1, 'features': [64, 128, 256, 512]}
     model = model_type.Model(config)
 
     # Transformation-function for images 
@@ -173,9 +174,9 @@ def depthestimation(output_dir, training, num_epoches, model_type):
     ])
 
     # Set up loaders for training and test data
-    train_dataset = DepthDataset(output_dir + "/train", transform=transform)
-    valid_dataset = DepthDataset(output_dir + "/valid", transform=transform)
-    test_dataset = DepthDataset(output_dir + "/test", transform=transform)
+    train_dataset = DepthDataset(output_dir + "/train", transform=transform, combined=combined)
+    valid_dataset = DepthDataset(output_dir + "/valid", transform=transform, combined=combined)
+    test_dataset = DepthDataset(output_dir + "/test", transform=transform, combined=combined)
 
     # todo: adapt batch_size - 1
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -189,7 +190,7 @@ def depthestimation(output_dir, training, num_epoches, model_type):
     if training:
         train(model, device, train_loader, valid_loader, criterion, optimizer, num_epoches)
     results = test(model, device, test_loader, criterion)
-    plot(results, output_dir, model_type)
+    plot(results, output_dir, model_type, combined)
 
 if __name__ == "__main__":
     
