@@ -5,8 +5,10 @@ import blenderproc as bproc
 import argparse
 import numpy as np
 from PIL import Image
+import cv2 as cv
 from random import randrange
 import bpy
+import os
 
 # import helper-scripts
 import sys
@@ -50,10 +52,10 @@ def normalizeAndSave(bproc, data, outputfolder):
 
 
 def normalos(bproc, objects):
-    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
+    bproc.lighting.light_surface([obj for obj in objects if (obj.get_name() == "Ceiling" or obj.get_name() == "Wall_Plane")], emission_strength=4.0, emission_color=[1,1,1,1])
     # disable projector
     [ls.set_energy(0) for ls in light_sources if ls.get_name() == "projector"]
-    # render whole pipeline
+    # render whole pipelinem
     bproc.renderer.toggle_stereo(True)
     data = bproc.renderer.render()
     # Apply stereo matching to each pair of images
@@ -62,9 +64,14 @@ def normalos(bproc, objects):
    
 
 def pattern(bproc, objects, bvh_tree):
-    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=4.0, emission_color=[1,1,1,1])
+    bproc.lighting.light_surface([obj for obj in objects if (obj.get_name() == "Ceiling" or obj.get_name() == "Wall_Plane")], emission_strength=4.0, emission_color=[1,1,1,1])
+
+    texture_image_path = "rainbow1080.png"
+
     pattern_img = load_pattern("PATTERN.txt")
     #pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
+    #pattern_img = cv.cvtColor(cv.imread("PATTERN.png"),cv.COLOR_RGB2RGBA)
+    #pattern_img = cv.imread("PATTERN.png")
     #save_pattern(pattern_img, "PATTERN.txt")
     proj = bproc.types.Light()
     proj.set_type('SPOT')
@@ -97,7 +104,7 @@ def pattern(bproc, objects, bvh_tree):
         sys.exit(1)
 
 def infrared(bproc, objects):
-    bproc.lighting.light_surface([obj for obj in objects if obj.get_name() == "Ceiling"], emission_strength=0.0, emission_color=[1,1,1,1])
+    bproc.lighting.light_surface([obj for obj in objects if (obj.get_name() == "Ceiling" or obj.get_name() == "Wall_Plane")], emission_strength=0.0, emission_color=[1,1,1,1])
     # render whole pipeline
     bproc.renderer.toggle_stereo(True)
     data = bproc.renderer.render()
@@ -113,12 +120,13 @@ def testDataGenerator(args):
     bproc.renderer.enable_depth_output(activate_antialiasing=False, file_prefix='depth_', convert_to_distance=False)
 
     if LOAD_SCENE:
-        objects = bproc.loader.load_obj(args.scene_file)
-        cam2world_matrix = np.loadtxt(args.camera_file)
+        objects = bproc.loader.load_obj(args.load_scene)
+        cam2world_matrix = np.loadtxt(args.load_camera)
         bproc.camera.add_camera_pose(cam2world_matrix)
+        bvh_tree = bproc.object.create_bvh_tree_multi_objects(objects)
     else:
-        RESOURCES = ['sofa_bunt.obj', 'cupboard.obj', 'kallax.obj', 'kommode.obj', 'klappstuhl.obj']
-        #RESOURCES = ['plant_bunt.blend', 'sofa_bunt.blend']
+        #RESOURCES = ['sofa_bunt.obj', 'cupboard.obj', 'kallax.obj', 'kommode.obj', 'klappstuhl.obj']
+        RESOURCES = ['sofa_bunt.obj', 'cupboard.obj', 'klappstuhl.obj']
         
         
         # load materias and objects
@@ -179,11 +187,11 @@ def testDataGenerator(args):
 
     ### !IMPORTANT! if "pattern" is executed it should be executed first as it changes the camera position ###
     ### correct order: pattern -> infrared -> normalos
-    if args.full or args.projection:
-        pattern(bproc, objects, bvh_tree)
-    if args.full or args.infrared:
-        infrared(bproc, objects)
-    normalos(bproc, objects)
+    #if args.full or args.projection:
+    pattern(bproc, objects, bvh_tree)
+    #if args.full or args.infrared:
+    infrared(bproc, objects)
+    #normalos(bproc, objects)
 
 
 ### MAIN-METHOD ###
@@ -213,9 +221,9 @@ if __name__ == "__main__":
     # inport export
     parser.add_argument('--load_scene', help='File to load scene from', default="")
     parser.add_argument('--load_camera', help='File to load camerapose from', default="")
-    parser.add_argument('--save_scene', help='File to save scene to', default="")
-    parser.add_argument('--save_camera', help='File to save camerapose to', default="")
-    parser.add_argument('--save_camera_intrinsics', help='File to save camera-intrinsics from/to', default="")
+    parser.add_argument('--save_scene', help='File to save scene to', default="saved_scene.obj")
+    parser.add_argument('--save_camera', help='File to save camerapose to', default="saved_camera.txt")
+    parser.add_argument('--save_camera_intrinsics', help='File to save camera-intrinsics from/to', default="saved_camera_intrinsics.txt")
 
     args = parser.parse_args()
     
