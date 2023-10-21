@@ -3,7 +3,7 @@
 import subprocess
 from tqdm import tqdm
 
-def loop(output_dir, poses, runs, load_scene, load_camera, save_scene, save_camera, save_camera_intrinsics):
+def loop(output_dir, poses, runs, load_scene, load_camera, save_scene, save_camera, save_camera_intrinsics, patterntype):
 	
 
 	for i in tqdm(range(runs)):
@@ -20,6 +20,8 @@ def loop(output_dir, poses, runs, load_scene, load_camera, save_scene, save_came
 			command += f'--save_camera {save_camera} '
 		if save_camera_intrinsics:
 			command += f'--save_camera_intrinsics {save_camera_intrinsics} '
+		if patterntype:
+			command += f'--pattern_type {patterntype} '
 		
 		subprocess.run(command.split(), stdout=subprocess.PIPE)
 

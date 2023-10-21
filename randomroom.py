@@ -13,7 +13,7 @@ import os
 # import helper-scripts
 import sys
 sys.path.append('scripts')
-import readhdf5, export_scene
+import readhdf5, export_scene, pattern_rainbow, pattern_continuous_colors, patter_stripes_repeated_grayscale
 
 ### DEFAULTS ###
 MATERIALS_PATH = 'resources/materials'
@@ -28,6 +28,8 @@ NUM_OF_LIGHTSOURCES = 1
 SAVE_SCENE = False
 LOAD_SCENE = False
 SAVE_INTRINSICS = False
+
+PATTERN = "points"
 
 
 light_sources = []
@@ -63,16 +65,35 @@ def normalos(bproc, objects):
     normalizeAndSave(bproc, data, args.output + "/NORMALOS")
    
 
-def pattern(bproc, objects, bvh_tree):
+def pattern(bproc, objects, bvh_tree, pattern_type):
     bproc.lighting.light_surface([obj for obj in objects if (obj.get_name() == "Ceiling" or obj.get_name() == "Wall_Plane")], emission_strength=4.0, emission_color=[1,1,1,1])
 
-    texture_image_path = "rainbow1080.png"
-
-    pattern_img = load_pattern("PATTERN.txt")
-    #pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
-    #pattern_img = cv.cvtColor(cv.imread("PATTERN.png"),cv.COLOR_RGB2RGBA)
-    #pattern_img = cv.imread("PATTERN.png")
-    #save_pattern(pattern_img, "PATTERN.txt")
+    if pattern_type == "points":
+        try:
+            pattern_img = load_pattern("PAN.txt")
+        except FileNotFoundError:
+            pattern_img = bproc.utility.generate_random_pattern_img(1280, 720, args.num_pattern)
+    elif pattern_type == "rainbow":
+        try:
+            pattern_img = cv.cvtColor(cv.imread("PATTERN_RAINBOW.png"),cv.COLOR_RGB2RGBA)
+        except cv.error:
+            pattern_rainbow.create_pattern_rainbow("PATTERN_RAINBOW.png")
+            pattern_img = cv.cvtColor(cv.imread("PATTERN_RAINBOW.png"),cv.COLOR_RGB2RGBA)
+    elif pattern_type == "stripes":
+        try:
+            pattern_img = cv.cvtColor(cv.imread("PATTERN_STRIPES.png"),cv.COLOR_RGB2RGBA)
+        except cv.error:
+            patter_stripes_repeated_grayscale.create_pattern_stripes("PATTERN_STRIPES.png")
+            pattern_img = cv.cvtColor(cv.imread("PATTERN_STRIPES.png"),cv.COLOR_RGB2RGBA)
+    elif pattern_type == "continuous":
+        try:
+            pattern_img = cv.cvtColor(cv.imread("PATTERN_CONTINUOUS.png"),cv.COLOR_RGB2RGBA)
+        except cv.error:
+            pattern_continuous_colors.create_pattern_continuous("PATTERN_CONTINUOUS.png")
+            pattern_img = cv.cvtColor(cv.imread("PATTERN_CONTINUOUS.png"),cv.COLOR_RGB2RGBA)
+    else:
+        raise ValueError("Patterntype unknown!")
+            
     proj = bproc.types.Light()
     proj.set_type('SPOT')
     proj.set_energy(3000)
@@ -188,7 +209,7 @@ def testDataGenerator(args):
     ### !IMPORTANT! if "pattern" is executed it should be executed first as it changes the camera position ###
     ### correct order: pattern -> infrared -> normalos
     #if args.full or args.projection:
-    pattern(bproc, objects, bvh_tree)
+    pattern(bproc, objects, bvh_tree, args.pattern_type)
     #if args.full or args.infrared:
     infrared(bproc, objects)
     #normalos(bproc, objects)
@@ -215,6 +236,7 @@ if __name__ == "__main__":
     parser.add_argument('--proj_pattern', '-pat', choices=['points', 'stripes'], default='points', help='Define projection pattern')
     parser.add_argument('--num_pattern', '-npat', type=int, help='Number of points or stripes')
     parser.add_argument('--infrared', action='store_true', help='Turn off all additional lightsources')
+    parser.add_argument('--pattern_type', choices={'points', 'rainbow', 'stripes', 'continuous'}, help="select pattern type", default=PATTERN)
 
     parser.add_argument('--full', '-f', action='store_true', help='normal, pattern and infrared images')
 

@@ -1,49 +1,70 @@
 import numpy as np
 from PIL import Image, ImageDraw
+import argparse
 
-WIDTH = 270 ## todo check even
-HEIGHT = 270
+WIDTH = 1278 
+HEIGHT = 720
 NUM_PEAKS = 3
+OUTPUT = "../PATTERN_CONTINUOUS.png"
 
-peak_intensity = 255
-base_length = 90 #WIDTH // NUM_PEAKS
-distance_between_peaks = 30 #base_length // NUM_PEAKS
-
-image = Image.new("RGB", (WIDTH, HEIGHT), (255,255,255))
-draw = ImageDraw.Draw(image)
-
-
-def create_peak_array(base_length, shift):
-    step = 255/ (base_length / 2)
+# width must be a multiple of 2xNUM_PEAKS, otherwise the pattern will be larger than the viewport!
+def create_pattern_continuous(output=OUTPUT, width=WIDTH, height=HEIGHT, peaks=NUM_PEAKS):
     
-    total_length = NUM_PEAKS * base_length
-    peak_array = np.zeros(total_length, dtype = int)
+    # resize width to fit intensity peaks
+    doublePeak = 2*peaks
+    if width % doublePeak != 0:
+        width = ((width // doublePeak) * doublePeak) + doublePeak
 
-    for i in range(NUM_PEAKS):
-        start_index = i * base_length + shift
-        end_index = start_index + base_length
+    peak_intensity = 255
+    base_length = width//peaks 
+    distance_between_peaks = base_length//peaks 
 
-        if end_index > total_length:
-            excess_length = end_index - total_length
-
-            for j in range(start_index, min(total_length, end_index - excess_length)):
-                peak_array[j] += int(min((j - start_index), (base_length - (j - start_index))) * step)
-
-            for j in range(0, excess_length):
-                wrapped_j = j + (base_length - excess_length) 
-                peak_array[j] = int(min(wrapped_j, (base_length - (wrapped_j))) * step)
-        else: 
-            for j in range(start_index, end_index):
-                peak_array[j] += int(min((j - start_index), (base_length - (j - start_index))) * step)
-
-    return peak_array
-
-red = create_peak_array(base_length, 0)
-green = create_peak_array(base_length, distance_between_peaks)
-blue = create_peak_array(base_length, 2*distance_between_peaks)
-
-for i in range(len(red)):
-    draw.line([(i, 0), (i, HEIGHT)], fill=(red[i], green[i], blue[i]))
+    image = Image.new("RGB", (width, height), (255,255,255))
+    draw = ImageDraw.Draw(image)
 
 
-image.save("continuouscolor_image.png")
+    def create_peak_array(base_length, shift):
+        step = peak_intensity // (base_length / 2)
+        
+        total_length = peaks * base_length
+        peak_array = np.zeros(int(total_length), dtype = int)
+
+        for i in range(peaks):
+            start_index = i * base_length + shift
+            end_index = start_index + base_length
+
+            if end_index > total_length:
+                excess_length = end_index - total_length
+
+                for j in range(start_index, min(total_length, end_index - excess_length)):
+                    peak_array[j] += int(min((j - start_index), (base_length - (j - start_index))) * step)
+
+                for j in range(0, excess_length):
+                    wrapped_j = j + (base_length - excess_length) 
+                    peak_array[j] = int(min(wrapped_j, (base_length - (wrapped_j))) * step)
+            else: 
+                for j in range(start_index, end_index):
+                    peak_array[j] += int(min((j - start_index), (base_length - (j - start_index))) * step)
+
+        return peak_array
+
+    red = create_peak_array(base_length, 0)
+    green = create_peak_array(base_length, distance_between_peaks)
+    blue = create_peak_array(base_length, 2*distance_between_peaks)
+
+    for i in range(len(red)):
+        draw.line([(i, 0), (i, height)], fill=(red[i], green[i], blue[i]))
+
+
+    image.save(output)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='pattern generator for continuous color code pattern',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    
+    parser.add_argument('--width', help='width of pattern', default=WIDTH)
+    parser.add_argument('--height', help='height of pattern', default=HEIGHT)
+    parser.add_argument('--output', help='output path for pattern', default=OUTPUT)
+
+    args = parser.parse_args()
+    create_pattern_continuous(args.width, args.height, NUM_PEAKS, args.output)

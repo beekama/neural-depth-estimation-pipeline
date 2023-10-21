@@ -29,6 +29,7 @@ POSES = 5
 EPOCHES = 10
 TRAINING = True
 MODEL =  "all" # "Unet"  "Unetresnet" "Unetplus"
+PATTERN = "points"
 
 
 
@@ -48,12 +49,12 @@ if __name__ == "__main__":
     parser.add_argument('--save_camera_intrinsics', help='File to save camera-intrinsics from/to', default="")
     parser.add_argument('--model', choices={'Unet', 'Unetresnet', 'all'}, help="select model type", default=MODEL)
     parser.add_argument('--combined', help='Stack Normals and Infrareds', default=False)
-    #parser.add_argument('--pattern', choices={'Unet', 'Unetresnet', 'all'}, help="select model type", default=MODEL)
+    parser.add_argument('--pattern', choices={'points', 'rainbow', 'stripes', 'continuous'}, help="select pattern type", default=PATTERN)
 
     args = parser.parse_args()
     
     if (args.loop):
-        loop(args.output_dir, args.num_poses, args.num_images, args.load_scene, args.load_camera, args.save_scene, args.save_camera, args.save_camera_intrinsics)
+        loop(args.output_dir, args.num_poses, args.num_images, args.load_scene, args.load_camera, args.save_scene, args.save_camera, args.save_camera_intrinsics, args.pattern)
     
     extract_images(args.output_dir + '/NORMALOS/', 'neuronalDepthEst/' + args.output_dir + '/NORMALOS')
     extract_images(args.output_dir + '/PATTERN/', 'neuronalDepthEst/' + args.output_dir + '/PATTERN')
