@@ -9,6 +9,7 @@ import cv2 as cv
 from random import randrange
 import bpy
 import os
+import random
 
 # import helper-scripts
 import sys
@@ -142,6 +143,17 @@ def testDataGenerator(args):
 
     if LOAD_SCENE:
         objects = bproc.loader.load_obj(args.load_scene)
+        
+        # choose materials for wall, ceiling, floor randomly
+        for obj in objects:
+            print(obj.get_name())
+            if obj.get_name() == "Wall_Plane":
+                obj.replace_materials(random.choice(materials))
+            elif "Floor_Plane" in obj.get_name(): 
+                obj.replace_materials(random.choice(materials))
+            elif "Ceiling_Plane" in obj.get_name():
+                obj.replace_materials(random.choice(materials))
+
         cam2world_matrix = np.loadtxt(args.load_camera)
         bproc.camera.add_camera_pose(cam2world_matrix)
         bvh_tree = bproc.object.create_bvh_tree_multi_objects(objects)
@@ -200,8 +212,33 @@ def testDataGenerator(args):
         
     if SAVE_SCENE:
         cam = bproc.camera.get_camera_pose()
-        export_scene.export_objects(bpy.data.objects, args.save_scene)
-        export_scene.export_camera(cam, args.save_camera)
+        if SAVE_FOLDER:
+            output_path_scene = os.path.join(args.save_scene, "saved_scene")
+            output_path_camera = os.path.join(args.save_scene, "saved_camera")
+            # check if files with the base filename already exist
+            existing_files = [f for f in os.listdir(args.save_scene) if f.startswith("saved_scene")]
+            # If there are existing files, determine the highest number from the filename - more efficient than .exists-loop
+            existing_numbers = [int(f.split("_")[-1].split(".")[0]) for f in existing_files if f.count("_") == 2]
+
+            if existing_numbers:
+                num = max(existing_numbers) + 1
+            else:
+                num = 1
+
+            output_path_scene = f"{output_path_scene}_{num:03d}.obj"
+            export_scene.export_objects(bpy.data.objects, output_path_scene)
+
+            # check if the numbering also fits save_camera-files
+            if not (os.path.exists(os.path.join(args.save_camera, f"saved_camera_{(num-1):03d}.txt") and num>0) or
+                os.path.exists(os.path.join(args.save_camera), f"saved_camera_{num:03d}.txt")):
+                raise ValueError("save_camera - wrong file handling. more or less camera files than scene files!")
+            
+            output_path_camera = f"{output_path_camera}_{num:03d}.txt"
+            export_scene.export_camera(cam, output_path_camera)
+        else:
+            # save scene/camera in specific file
+            export_scene.export_objects(bpy.data.objects, args.save_scene)
+            export_scene.export_camera(cam, args.save_camera)
     if SAVE_INTRINSICS:
         cam = bproc.camera.get_intrinsics_as_K_matrix()
         export_scene.export_camera(cam, args.save_camera_intrinsics)
@@ -243,8 +280,8 @@ if __name__ == "__main__":
     # inport export
     parser.add_argument('--load_scene', help='File to load scene from', default="")
     parser.add_argument('--load_camera', help='File to load camerapose from', default="")
-    parser.add_argument('--save_scene', help='File to save scene to', default="saved_scene.obj")
-    parser.add_argument('--save_camera', help='File to save camerapose to', default="saved_camera.txt")
+    parser.add_argument('--save_scene', help='File/folder to save scene to', default="saved_scene.obj")
+    parser.add_argument('--save_camera', help='File/folder to save camerapose to', default="saved_camera.txt")
     parser.add_argument('--save_camera_intrinsics', help='File to save camera-intrinsics from/to', default="saved_camera_intrinsics.txt")
 
     args = parser.parse_args()
@@ -255,12 +292,16 @@ if __name__ == "__main__":
     # check load or save scene
     LOAD_SCENE = args.load_scene != "" or args.load_camera != ""
     SAVE_SCENE = args.save_scene != "" or args.save_camera != ""
+    SAVE_FOLDER = os.path.isdir(args.save_camera) and os.path.isdir(args.save_scene)
     SAVE_INTRINSICS = args.save_camera_intrinsics != ""
     
     if LOAD_SCENE and (args.load_scene == "" or args.load_camera == ""):
         parser.error("Invalid argument: both 'load_scene-file' and 'load_camera-file' must be set")
     if SAVE_SCENE and (args.save_scene == "" or args.save_camera == ""):
         parser.error("Invalid argument: both 'save_scene-file' and 'save_camera-file' must be set")
+    if ((os.path.isdir(args.save_scene) and not os.path.isdir(args.save_camera)) or 
+        (os.path.isdir(args.save_camera) and not os.path.isdir(args.save_scene))):
+        parser.error("Invalid argument: 'save_scene-file' and 'save_camera-file' must be both file or both folder")
 
 
     # check projection dependencies
