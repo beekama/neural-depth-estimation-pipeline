@@ -8,7 +8,6 @@ from torchmetrics.image import StructuralSimilarityIndexMeasure as  SSIM
 from torchmetrics.regression import MeanSquaredError
 
 
-
 FOLDER = ""
 PATTERN = r"(\d{3})_depth"
 
@@ -49,12 +48,13 @@ def calculate_mse(folder, pattern, save_maps):
         ssim = SSIM()(img1_tensor, img2_tensor)
 
         if save_maps:
+            ## MSE ##
             abs_diff = cv.absdiff(img1, img2)
             squared_error = abs_diff.astype(np.float32) ** 2
             # normalize and apply colormap
             norm_error = cv.normalize(squared_error, None, 0, 255, cv.NORM_MINMAX, cv.CV_8U)
             errormap = cv.applyColorMap(norm_error, cv.COLORMAP_JET)
-            cv.imwrite(os.path.join(folder,f"{int(number):03d}_errormap.png"), errormap)
+            cv.imwrite(os.path.join(folder,f"{int(number):03d}_zerrormap_mse.png"), errormap)
 
         print(f"me:ansquared: {mse}")
         if mse < mse_min_val or mse_min_val == -1:
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='create errorvalues for depth estimation results',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('folder', help="path to folder with depth results", default=FOLDER)
-    parser.add_argument('--save_errormap', action=argparse.BooleanOptionalAction, help='save errormaps of folder', default=False)
+    parser.add_argument('--save_errormap', action=argparse.BooleanOptionalAction, help='save errormaps of folder', default=True)
     #parser.add_argument('pattern', help="pattern of depth files: e.g. r'\d{3})_depth'", default=PATTERN)
     
     args = parser.parse_args()
